@@ -1,4 +1,4 @@
-use crate::cpu::{Memory, CPU, CpuFlags};
+use crate::{cpu::{Memory, CPU, CpuFlags}};
 
 use super::CPUError;
 

@@ -1,4 +1,6 @@
-use super::{memory::Memory, CpuFlags, CPU};
+use crate::memory::Memory;
+
+use super::{CpuFlags, CPU};
 
 /// Instructions addressing mode
 #[derive(Debug)]

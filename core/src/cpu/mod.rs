@@ -1,10 +1,12 @@
 use bitflags::bitflags;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use self::{
-    instruction::{AddressingMode, Instructions},
+use crate::{
+    bus::Bus,
     memory::{page_cross, Memory},
 };
+
+use self::instruction::{AddressingMode, Instructions};
 
 #[cfg(test)]
 pub mod mod_tests;
@@ -54,6 +56,7 @@ pub struct CPU {
     memory: [u8; 0xFFFF],
     /// Remaining cycles count before moving to the next instruction.
     remaining_cycles: u8,
+    bus: Option<Rc<RefCell<Bus>>>,
 }
 
 /// CPU Error.
@@ -64,6 +67,8 @@ pub enum CPUError {
 
 impl CPU {
     /// Creates a CPU.
+    /// Used internal memory until bus is connected.
+    /// Call connect_bus to connect to an external bus.
     pub fn new() -> Self {
         Self {
             register_a: 0,
@@ -74,7 +79,12 @@ impl CPU {
             program_counter: 0,
             memory: [0; 0xFFFF],
             remaining_cycles: 0,
+            bus: None,
         }
+    }
+
+    pub fn connect_bus(&mut self, bus: &Rc<RefCell<Bus>>) {
+        self.bus = Some(Rc::clone(bus));
     }
 
     /// Gets absolute address according to address + addressing mode.
@@ -258,8 +268,8 @@ impl CPU {
 
     /// Loads program into memory.
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x0600);
+        self.memory[0x8600..(0x8600 + program.len())].copy_from_slice(&program[..]);
+        self.mem_write_u16(0xFFFC, 0x8600);
     }
 
     /// Resets CPU.
@@ -282,15 +292,18 @@ impl CPU {
         } else {
             let ref opcodes: HashMap<u8, &'static opcode::OpCode> = *opcode::OPCODES_MAP;
             let code = self.mem_read(self.program_counter);
-            self.program_counter += 1;
-            let program_counter_state = self.program_counter;
 
             let opcode = match opcodes.get(&code) {
                 Some(c) => c,
                 None => return Err(CPUError::UnknownOpCode(code)),
             };
 
+            //println!("{:#06x} - {}", self.program_counter, opcode.mnemonic);
+
             self.remaining_cycles = opcode.cycles;
+
+            self.program_counter += 1;
+            let program_counter_state = self.program_counter;
 
             match code {
                 /* LDA */
@@ -499,9 +512,10 @@ impl CPU {
     }
 
     /// Runs loaded program.
-    pub fn run_with_callback<F>(&mut self, mut callback: F)  -> Result<(), CPUError>
+    pub fn run_with_callback<F>(&mut self, mut callback: F) -> Result<(), CPUError>
     where
-    F: FnMut(&mut CPU) {
+        F: FnMut(&mut CPU),
+    {
         let mut cont = true;
         while cont {
             callback(self);
@@ -509,7 +523,7 @@ impl CPU {
         }
         Ok(())
     }
-    
+
     pub fn run(&mut self) -> Result<(), CPUError> {
         self.run_with_callback(|_| {})
     }
