@@ -42,6 +42,11 @@ impl NES {
         self.cpu.reset();
     }
 
+    #[cfg(test)]
+    pub fn start_at(&mut self, addr: u16) {
+        self.cpu.program_counter = addr;
+    }
+
     pub fn run<F>(&mut self, callback: F) -> Result<(), NESError>
     where
         F: FnMut(&mut CPU),

@@ -1,4 +1,42 @@
-use crate::{cartridge::Cartridge, nes::NES};
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+    path::Path,
+};
+
+use crate::{cartridge::Cartridge, cpu::trace::Trace, nes::NES};
+
+fn load_trace(file: impl AsRef<Path>) -> Vec<String> {
+    let file = File::open(file).expect("no such file");
+    let buf = BufReader::new(file);
+    buf.lines()
+        .map(|l| l.expect("could not parse line"))
+        .collect()
+}
+
+fn run_test_suite(cartridge_file: &str, log_file: &str, start_at: Option<u16>) {
+    let expected = load_trace(log_file);
+    let cartridge = Cartridge::from_file(cartridge_file).unwrap();
+    let mut nes = NES::new();
+    nes.insert(cartridge);
+    nes.reset();
+    if let Some(start_at) = start_at {
+        nes.start_at(start_at);
+    }
+    let mut counter = 0;
+    nes.run(|cpu| {
+        assert_eq!(
+            expected[counter].split(" PPU").collect::<Vec<&str>>()[0],
+            cpu.trace(),
+            "failure at line {} of {}, previous instruction: {}",
+            counter + 1,
+            log_file,
+            expected[counter - 1].split(" PPU").collect::<Vec<&str>>()[0]
+        );
+        counter += 1;
+    })
+    .unwrap();
+}
 
 #[test]
 fn test_run() {
@@ -7,7 +45,7 @@ fn test_run() {
 
     let mut prg_rom: [u8; 0xFFFF] = [0; 0xFFFF];
     prg_rom[0..code.len()].copy_from_slice(&code[..]);
-    
+
     // Set program start at address 0xFFFC (0x8000)
     let hi = (0x8000 >> 8) as u8;
     let lo = (0x8000 & 0xff) as u8;
@@ -23,10 +61,15 @@ fn test_run() {
     let mut nes = NES::new();
     nes.insert(cartridge);
     nes.reset();
-    let mut tick_count = 0;
+    let mut inst_count = 0;
     nes.run(|_| {
-        tick_count += 1;
+        inst_count += 1;
     })
     .unwrap();
-    assert_eq!(tick_count, 7)
+    assert_eq!(inst_count, 3)
 }
+
+/*#[test]
+fn test_nestest() {
+    run_test_suite("res/nestest.nes", "res/nestest.log", Some(0xC000));
+}*/

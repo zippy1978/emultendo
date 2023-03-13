@@ -6,7 +6,10 @@ use crate::{
     memory::{page_cross, Memory},
 };
 
-use self::instruction::{AddressingMode, Instructions};
+use self::{
+    instruction::{AddressingMode, Instructions},
+    unofficial_instruction::UnofficialInstructions,
+};
 
 #[cfg(test)]
 pub mod mod_tests;
@@ -14,8 +17,17 @@ pub mod mod_tests;
 mod instruction;
 #[cfg(test)]
 mod instruction_tests;
+
+mod unofficial_instruction;
+#[cfg(test)]
+mod unofficial_instruction_tests;
+
 pub mod memory;
 mod opcode;
+pub mod trace;
+
+#[cfg(test)]
+mod trace_tests;
 
 bitflags! {
     /// # Status Register (P) http://wiki.nesdev.com/w/index.php/Status_flags
@@ -51,7 +63,7 @@ pub struct CPU {
     register_x: u8,
     register_y: u8,
     status: CpuFlags,
-    program_counter: u16,
+    pub(crate) program_counter: u16,
     stack_pointer: u8,
     memory: [u8; 0xFFFF],
     /// Remaining cycles count before moving to the next instruction.
@@ -199,6 +211,11 @@ impl CPU {
 
             self.program_counter = jump_addr;
         }
+    }
+
+    /// Substracts from register a.
+    fn sub_from_register_a(&mut self, data: u8) {
+        self.add_to_register_a(((data as i8).wrapping_neg().wrapping_sub(1)) as u8);
     }
 
     /// http://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
@@ -501,6 +518,92 @@ impl CPU {
                 /* TYA */
                 0x98 => self.tya(),
 
+                /* *LAX */
+                0xa7 | 0xb7 | 0xaf | 0xbf | 0xa3 | 0xb3 => self.lax(&opcode.mode),
+
+                /* *SAX */
+                0x87 | 0x97 | 0x8f | 0x83 => self.sax(&opcode.mode),
+
+                /* *NOP */
+                0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x92 | 0xb2 | 0xd2
+                | 0xf2 => { /* Nothing */ }
+
+                /* *NOP */
+                0x1a | 0x3a | 0x5a | 0x7a | 0xda | 0xfa => { /* Nothing */ }
+
+                /* *NOP read */
+                0x04 | 0x44 | 0x64 | 0x14 | 0x34 | 0x54 | 0x74 | 0xd4 | 0xf4 | 0x0c | 0x1c
+                | 0x3c | 0x5c | 0x7c | 0xdc | 0xfc => {
+                    let (_, page_cross) = self.get_operand_address(&opcode.mode);
+                    if page_cross {
+                        self.remaining_cycles += 1;
+                    }
+                    /* Nothing */
+                }
+
+                /* *SBC */
+                0xeb => self.unofficial_sbc(&opcode.mode),
+
+                /* *DCP */
+                0xc7 | 0xd7 | 0xCF | 0xdF | 0xdb | 0xd3 | 0xc3 => self.dcp(&opcode.mode),
+
+                /* *ISB */
+                0xe7 | 0xf7 | 0xef | 0xff | 0xfb | 0xe3 | 0xf3 => self.isb(&opcode.mode),
+
+                /* *SLO */
+                0x07 | 0x17 | 0x0F | 0x1f | 0x1b | 0x03 | 0x13 => self.slo(&opcode.mode),
+
+                /* *RLA */
+                0x27 | 0x37 | 0x2F | 0x3F | 0x3b | 0x33 | 0x23 => self.rla(&opcode.mode),
+
+                /* *SRE */
+                0x47 | 0x57 | 0x4F | 0x5f | 0x5b | 0x43 | 0x53 => self.sre(&opcode.mode),
+
+                /* *RRA */
+                0x67 | 0x77 | 0x6f | 0x7f | 0x7b | 0x63 | 0x73 => self.rra(&opcode.mode),
+
+                /* *SKB */
+                0x80 | 0x82 | 0x89 | 0xc2 | 0xe2 => {
+                    /* 2 byte NOP (immediate ) */
+                    // TODO might be worth doing the read (like NOP) ?
+                }
+
+                /* *AXS */
+                0xcb => self.axs(&opcode.mode),
+
+                /* *ARR */
+                0x6b => self.arr(&opcode.mode),
+
+                /* *ANC */
+                0x0b | 0x2b => self.anc(&opcode.mode),
+
+                /* *ALR */
+                0x4b => self.alr(&opcode.mode),
+
+                /* *LXA */
+                0xab => self.lxa(&opcode.mode),
+
+                /* *XAA */
+                0x8b => self.xaa(&opcode.mode),
+
+                /* *LAS */
+                0xbb => self.las(&opcode.mode),
+
+                /* *TAS */
+                0x9b => self.tas(),
+
+                /* *AHX  Indirect Y */
+                0x93 => self.ahx_indirect_y(),
+
+                /* *AHX  Absolute Y */
+                0x9f => self.ahx_absolute_y(),
+
+                /* *SHX */
+                0x9e => self.shx(),
+
+                /* *SHY */
+                0x9c => self.shy(),
+
                 _ => (),
             };
 
@@ -518,7 +621,11 @@ impl CPU {
     {
         let mut cont = true;
         while cont {
-            callback(self);
+            // Callback is called only on instruction change
+            // Not for every cycle
+            if self.remaining_cycles == 0 {
+                callback(self);
+            }
             cont = self.tick()?;
         }
         Ok(())

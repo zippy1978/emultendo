@@ -1,4 +1,4 @@
-use emultendo_core::{cartridge::Cartridge, cpu::CPU, memory::Memory, nes::NES};
+use emultendo_core::{cartridge::Cartridge, cpu::{CPU, trace::Trace}, memory::Memory, nes::NES};
 use rand::Rng;
 use sdl2::{
     event::Event,
@@ -105,6 +105,8 @@ fn main() {
     nes.run(|cpu| {
         handle_user_input(cpu, &mut event_pump);
         cpu.mem_write(0xfe, rng.gen_range(1..16));
+        
+        println!("{}", cpu.trace());
 
         if read_screen_state(cpu, &mut screen_state) {
             texture.update(None, &screen_state, 32 * 3).unwrap();

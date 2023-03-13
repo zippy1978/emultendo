@@ -409,6 +409,8 @@ impl Instructions for CPU {
         self.status.bits = self.stack_pop();
         self.status.remove(CpuFlags::BREAK);
         self.status.insert(CpuFlags::BREAK2);
+
+        self.program_counter = self.stack_pop_u16();
     }
 
     fn bne(&mut self) {

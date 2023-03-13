@@ -2,7 +2,7 @@ use crate::{cpu::{Memory, CPU, CpuFlags}};
 
 use super::CPUError;
 
-fn run_code(cpu: &mut CPU, code: Vec<u8>) -> Result<(), CPUError>{
+pub(crate) fn run_code(cpu: &mut CPU, code: Vec<u8>) -> Result<(), CPUError>{
     cpu.load(code);
     cpu.program_counter = cpu.mem_read_u16(0xFFFC);
     cpu.run()
