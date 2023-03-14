@@ -1,9 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    bus::Bus,
     cartridge::Cartridge,
-    cpu::{CPUError, CPU},
+    cpu::{CPUError, CPU}, bus::cpu_bus::CPUBus,
 };
 
 /// NES Error.
@@ -21,21 +20,21 @@ impl From<CPUError> for NESError {
 /// NES console.
 pub struct NES {
     cpu: CPU,
-    bus: Rc<RefCell<Bus>>,
+    bus: Rc<RefCell<CPUBus>>,
 }
 
 impl NES {
     pub fn new() -> Self {
         let mut this = Self {
             cpu: CPU::new(),
-            bus: Rc::new(RefCell::new(Bus::new())),
+            bus: Rc::new(RefCell::new(CPUBus::new())),
         };
         this.cpu.connect_bus(&this.bus);
         this
     }
 
     pub fn insert(&mut self, cartridge: Cartridge) {
-        self.bus.borrow_mut().connect_cartridge(cartridge);
+        self.bus.borrow_mut().connect_cartridge(&cartridge);
     }
 
     pub fn reset(&mut self) {

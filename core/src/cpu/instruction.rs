@@ -1,6 +1,6 @@
 use crate::memory::Memory;
 
-use super::{CpuFlags, CPU};
+use super::{CPUFlags, CPU};
 
 /// Instructions addressing mode
 #[derive(Debug)]
@@ -110,31 +110,31 @@ impl Instructions for CPU {
     }
 
     fn cld(&mut self) {
-        self.status.remove(CpuFlags::DECIMAL_MODE);
+        self.status.remove(CPUFlags::DECIMAL_MODE);
     }
 
     fn cli(&mut self) {
-        self.status.remove(CpuFlags::INTERRUPT_DISABLE);
+        self.status.remove(CPUFlags::INTERRUPT_DISABLE);
     }
 
     fn clv(&mut self) {
-        self.status.remove(CpuFlags::OVERFLOW);
+        self.status.remove(CPUFlags::OVERFLOW);
     }
 
     fn clc(&mut self) {
-        self.status.remove(CpuFlags::CARRY);
+        self.status.remove(CPUFlags::CARRY);
     }
 
     fn sec(&mut self) {
-        self.status.insert(CpuFlags::CARRY);
+        self.status.insert(CPUFlags::CARRY);
     }
 
     fn sei(&mut self) {
-        self.status.insert(CpuFlags::INTERRUPT_DISABLE);
+        self.status.insert(CPUFlags::INTERRUPT_DISABLE);
     }
 
     fn sed(&mut self) {
-        self.status.insert(CpuFlags::DECIMAL_MODE);
+        self.status.insert(CPUFlags::DECIMAL_MODE);
     }
 
     fn pha(&mut self) {
@@ -148,15 +148,15 @@ impl Instructions for CPU {
 
     fn php(&mut self) {
         let mut flags = self.status.clone();
-        flags.insert(CpuFlags::BREAK);
-        flags.insert(CpuFlags::BREAK2);
+        flags.insert(CPUFlags::BREAK);
+        flags.insert(CPUFlags::BREAK2);
         self.stack_push(flags.bits());
     }
 
     fn plp(&mut self) {
         self.status.bits = self.stack_pop();
-        self.status.remove(CpuFlags::BREAK);
-        self.status.insert(CpuFlags::BREAK2);
+        self.status.remove(CPUFlags::BREAK);
+        self.status.insert(CPUFlags::BREAK2);
     }
 
     fn adc(&mut self, mode: &AddressingMode) {
@@ -209,9 +209,9 @@ impl Instructions for CPU {
     fn lsr_accumulator(&mut self) {
         let mut data = self.register_a;
         if data & 1 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data >> 1;
         self.register_a = data;
@@ -222,9 +222,9 @@ impl Instructions for CPU {
         let (addr, _) = self.get_operand_address(mode);
         let mut data = self.mem_read(addr);
         if data & 1 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data >> 1;
         self.mem_write(addr, data);
@@ -235,9 +235,9 @@ impl Instructions for CPU {
     fn asl_accumulator(&mut self) {
         let mut data = self.register_a;
         if data >> 7 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data << 1;
         self.register_a = data;
@@ -248,9 +248,9 @@ impl Instructions for CPU {
         let (addr, _) = self.get_operand_address(mode);
         let mut data = self.mem_read(addr);
         if data >> 7 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data << 1;
         self.mem_write(addr, data);
@@ -260,12 +260,12 @@ impl Instructions for CPU {
 
     fn rol_accumulator(&mut self) {
         let mut data = self.register_a;
-        let old_carry = self.status.contains(CpuFlags::CARRY);
+        let old_carry = self.status.contains(CPUFlags::CARRY);
 
         if data >> 7 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data << 1;
         if old_carry {
@@ -278,12 +278,12 @@ impl Instructions for CPU {
     fn rol(&mut self, mode: &AddressingMode) -> u8 {
         let (addr, _) = self.get_operand_address(mode);
         let mut data = self.mem_read(addr);
-        let old_carry = self.status.contains(CpuFlags::CARRY);
+        let old_carry = self.status.contains(CPUFlags::CARRY);
 
         if data >> 7 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data << 1;
         if old_carry {
@@ -296,12 +296,12 @@ impl Instructions for CPU {
 
     fn ror_accumulator(&mut self) {
         let mut data = self.register_a;
-        let old_carry = self.status.contains(CpuFlags::CARRY);
+        let old_carry = self.status.contains(CPUFlags::CARRY);
 
         if data & 1 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data >> 1;
         if old_carry {
@@ -314,12 +314,12 @@ impl Instructions for CPU {
     fn ror(&mut self, mode: &AddressingMode) -> u8 {
         let (addr, _) = self.get_operand_address(mode);
         let mut data = self.mem_read(addr);
-        let old_carry = self.status.contains(CpuFlags::CARRY);
+        let old_carry = self.status.contains(CPUFlags::CARRY);
 
         if data & 1 == 1 {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
         data = data >> 1;
         if old_carry {
@@ -407,42 +407,42 @@ impl Instructions for CPU {
 
     fn rti(&mut self) {
         self.status.bits = self.stack_pop();
-        self.status.remove(CpuFlags::BREAK);
-        self.status.insert(CpuFlags::BREAK2);
+        self.status.remove(CPUFlags::BREAK);
+        self.status.insert(CPUFlags::BREAK2);
 
         self.program_counter = self.stack_pop_u16();
     }
 
     fn bne(&mut self) {
-        self.branch(!self.status.contains(CpuFlags::ZERO));
+        self.branch(!self.status.contains(CPUFlags::ZERO));
     }
 
     fn bvs(&mut self) {
-        self.branch(self.status.contains(CpuFlags::OVERFLOW));
+        self.branch(self.status.contains(CPUFlags::OVERFLOW));
     }
 
     fn bvc(&mut self) {
-        self.branch(!self.status.contains(CpuFlags::OVERFLOW));
+        self.branch(!self.status.contains(CPUFlags::OVERFLOW));
     }
 
     fn bpl(&mut self) {
-        self.branch(!self.status.contains(CpuFlags::NEGATIV));
+        self.branch(!self.status.contains(CPUFlags::NEGATIV));
     }
 
     fn bmi(&mut self) {
-        self.branch(self.status.contains(CpuFlags::NEGATIV));
+        self.branch(self.status.contains(CPUFlags::NEGATIV));
     }
 
     fn beq(&mut self) {
-        self.branch(self.status.contains(CpuFlags::ZERO));
+        self.branch(self.status.contains(CPUFlags::ZERO));
     }
 
     fn bcs(&mut self) {
-        self.branch(self.status.contains(CpuFlags::CARRY));
+        self.branch(self.status.contains(CPUFlags::CARRY));
     }
 
     fn bcc(&mut self) {
-        self.branch(!self.status.contains(CpuFlags::CARRY));
+        self.branch(!self.status.contains(CPUFlags::CARRY));
     }
 
     fn bit(&mut self, mode: &AddressingMode) {
@@ -450,13 +450,13 @@ impl Instructions for CPU {
         let data = self.mem_read(addr);
         let and = self.register_a & data;
         if and == 0 {
-            self.status.insert(CpuFlags::ZERO);
+            self.status.insert(CPUFlags::ZERO);
         } else {
-            self.status.remove(CpuFlags::ZERO);
+            self.status.remove(CPUFlags::ZERO);
         }
 
-        self.status.set(CpuFlags::NEGATIV, data & 0b10000000 > 0);
-        self.status.set(CpuFlags::OVERFLOW, data & 0b01000000 > 0);
+        self.status.set(CPUFlags::NEGATIV, data & 0b10000000 > 0);
+        self.status.set(CPUFlags::OVERFLOW, data & 0b01000000 > 0);
     }
 
     fn stx(&mut self, mode: &AddressingMode) {

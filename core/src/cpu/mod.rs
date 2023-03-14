@@ -2,7 +2,7 @@ use bitflags::bitflags;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    bus::Bus,
+    bus::cpu_bus::CPUBus,
     memory::{page_cross, Memory},
 };
 
@@ -42,7 +42,7 @@ bitflags! {
     ///  | +--------------- Overflow Flag
     ///  +----------------- Negative Flag
     ///
-    pub struct CpuFlags: u8 {
+    pub struct CPUFlags: u8 {
         const CARRY             = 0b00000001;
         const ZERO              = 0b00000010;
         const INTERRUPT_DISABLE = 0b00000100;
@@ -62,13 +62,13 @@ pub struct CPU {
     register_a: u8,
     register_x: u8,
     register_y: u8,
-    status: CpuFlags,
+    status: CPUFlags,
     pub(crate) program_counter: u16,
     stack_pointer: u8,
     memory: [u8; 0xFFFF],
     /// Remaining cycles count before moving to the next instruction.
     remaining_cycles: u8,
-    bus: Option<Rc<RefCell<Bus>>>,
+    bus: Option<Rc<RefCell<CPUBus>>>,
 }
 
 /// CPU Error.
@@ -87,7 +87,7 @@ impl CPU {
             register_x: 0,
             register_y: 0,
             stack_pointer: STACK_RESET,
-            status: CpuFlags::from_bits_truncate(0b100100),
+            status: CPUFlags::from_bits_truncate(0b100100),
             program_counter: 0,
             memory: [0; 0xFFFF],
             remaining_cycles: 0,
@@ -95,7 +95,7 @@ impl CPU {
         }
     }
 
-    pub fn connect_bus(&mut self, bus: &Rc<RefCell<Bus>>) {
+    pub fn connect_bus(&mut self, bus: &Rc<RefCell<CPUBus>>) {
         self.bus = Some(Rc::clone(bus));
     }
 
@@ -165,15 +165,15 @@ impl CPU {
     /// Updates zero and neg flags in status.
     fn update_zero_and_negative_flags(&mut self, result: u8) {
         if result == 0 {
-            self.status.insert(CpuFlags::ZERO);
+            self.status.insert(CPUFlags::ZERO);
         } else {
-            self.status.remove(CpuFlags::ZERO);
+            self.status.remove(CPUFlags::ZERO);
         }
 
         if result & 0b1000_0000 != 0 {
-            self.status.insert(CpuFlags::NEGATIV);
+            self.status.insert(CPUFlags::NEGATIV);
         } else {
-            self.status.remove(CpuFlags::NEGATIV);
+            self.status.remove(CPUFlags::NEGATIV);
         }
     }
 
@@ -182,9 +182,9 @@ impl CPU {
         let (addr, page_cross) = self.get_operand_address(mode);
         let data = self.mem_read(addr);
         if data <= compare_with {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
 
         self.update_zero_and_negative_flags(compare_with.wrapping_sub(data));
@@ -222,7 +222,7 @@ impl CPU {
     fn add_to_register_a(&mut self, data: u8) {
         let sum = self.register_a as u16
             + data as u16
-            + (if self.status.contains(CpuFlags::CARRY) {
+            + (if self.status.contains(CPUFlags::CARRY) {
                 1
             } else {
                 0
@@ -231,17 +231,17 @@ impl CPU {
         let carry = sum > 0xff;
 
         if carry {
-            self.status.insert(CpuFlags::CARRY);
+            self.status.insert(CPUFlags::CARRY);
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.status.remove(CPUFlags::CARRY);
         }
 
         let result = sum as u8;
 
         if (data ^ result) & (result ^ self.register_a) & 0x80 != 0 {
-            self.status.insert(CpuFlags::OVERFLOW);
+            self.status.insert(CPUFlags::OVERFLOW);
         } else {
-            self.status.remove(CpuFlags::OVERFLOW)
+            self.status.remove(CPUFlags::OVERFLOW)
         }
 
         self.register_a = result;
@@ -295,7 +295,7 @@ impl CPU {
         self.register_x = 0;
         self.register_y = 0;
         self.stack_pointer = STACK_RESET;
-        self.status = CpuFlags::from_bits_truncate(0b100100);
+        self.status = CPUFlags::from_bits_truncate(0b100100);
 
         self.program_counter = self.mem_read_u16(0xFFFC);
         self.remaining_cycles = 0;
@@ -603,8 +603,6 @@ impl CPU {
 
                 /* *SHY */
                 0x9c => self.shy(),
-
-                _ => (),
             };
 
             if program_counter_state == self.program_counter {

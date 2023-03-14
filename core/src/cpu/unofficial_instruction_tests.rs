@@ -1,5 +1,5 @@
 use crate::{
-    cpu::{instruction_tests::run_code, CpuFlags, CPU},
+    cpu::{instruction_tests::run_code, CPUFlags, CPU},
     memory::Memory,
 };
 
@@ -24,7 +24,7 @@ fn test_0x8f_sax() {
 #[test]
 fn test_unofficial_sbc() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::CARRY);
+    cpu.status.insert(CPUFlags::CARRY);
     cpu.register_a = 0x05;
     run_code(&mut cpu, vec![0xeb, 0x02, 0x00]).unwrap();
     assert_eq!(cpu.register_a, 0x03);
@@ -41,7 +41,7 @@ fn test_0xcf_dcp() {
 #[test]
 fn test_0xef_isb() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::CARRY);
+    cpu.status.insert(CPUFlags::CARRY);
     cpu.register_a = 0x06;
     cpu.mem_write(0x10, 0x02);
     run_code(&mut cpu, vec![0xef, 0x10, 0x00]).unwrap();
@@ -100,8 +100,8 @@ fn test_arr() {
     cpu.register_a = 0b1;
     run_code(&mut cpu, vec![0x6b, 0b1, 0x00]).unwrap();
     assert_eq!(cpu.register_a, 0b0);
-    assert!(!cpu.status.contains(CpuFlags::CARRY));
-    assert!(!cpu.status.contains(CpuFlags::OVERFLOW));
+    assert!(!cpu.status.contains(CPUFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::OVERFLOW));
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn test_0x0b_anc() {
     cpu.register_a = 0b1;
     run_code(&mut cpu, vec![0x0b, 0b1, 0x00]).unwrap();
     assert_eq!(cpu.register_a, 0b1);
-    assert!(!cpu.status.contains(CpuFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::CARRY));
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn test_alr() {
     cpu.register_a = 0b1;
     run_code(&mut cpu, vec![0x4b, 0b1, 0x00]).unwrap();
     assert_eq!(cpu.register_a, 0b0);
-    assert!(cpu.status.contains(CpuFlags::CARRY));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
 }
 
 #[test]

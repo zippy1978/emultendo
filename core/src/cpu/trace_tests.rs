@@ -1,10 +1,10 @@
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{bus::Bus, cpu::{CPU, trace::Trace}, memory::Memory};
+use crate::{cpu::{CPU, trace::Trace}, memory::Memory, bus::cpu_bus::CPUBus};
 
 #[test]
    fn test_trace() {
-       let bus = Rc::new(RefCell::new(Bus::new()));
+       let bus = Rc::new(RefCell::new(CPUBus::new()));
        bus.borrow_mut().mem_write(100, 0xa2);
        bus.borrow_mut().mem_write(101, 0x01);
        bus.borrow_mut().mem_write(102, 0xca);

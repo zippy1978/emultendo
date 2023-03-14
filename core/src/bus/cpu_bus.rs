@@ -34,41 +34,38 @@ const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 const PRG_ROM: u16 = 0x8000;
 const PRG_ROM_END: u16 = 0xFFFF;
 
-/// NES connection bus.
-pub struct Bus {
+/// NES CPU connection bus.
+pub struct CPUBus {
     cpu_vram: [u8; 2048],
-    cartridge: Option<Cartridge>,
+    prg_rom: Vec<u8>,
 }
 
-impl Bus {
+impl CPUBus {
     /// Creates a bus.
     pub fn new() -> Self {
-        Bus {
+        CPUBus {
             cpu_vram: [0; 2048],
-            cartridge: None,
+            prg_rom: vec![],
         }
     }
 
     /// Connects a cartridge to the bus.
-    pub fn connect_cartridge(&mut self, cartridge: Cartridge) {
-        self.cartridge = Some(cartridge);
+    pub fn connect_cartridge(&mut self, cartridge: &Cartridge) {
+        self.prg_rom = cartridge.prg_rom.clone();
     }
 
-    /// Reads P<ROG_ROM.
+    /// Reads PROG_ROM.
     fn read_prg_rom(&self, mut addr: u16) -> u8 {
-        if let Some(cartridge) = &self.cartridge {
-            addr -= 0x8000;
-            if cartridge.prg_rom.len() == 0x4000 && addr >= 0x4000 {
-                // Mirror if needed
-                addr = addr % 0x4000;
-            }
-            return cartridge.prg_rom[addr as usize];
+        addr -= 0x8000;
+        if self.prg_rom.len() == 0x4000 && addr >= 0x4000 {
+            // Mirror if needed
+            addr = addr % 0x4000;
         }
-        0
+        self.prg_rom[addr as usize]
     }
 }
 
-impl Memory for Bus {
+impl Memory for CPUBus {
     /// Reads memory address.
     fn mem_read(&self, addr: u16) -> u8 {
         match addr {
@@ -101,7 +98,7 @@ impl Memory for Bus {
             }
             PRG_ROM..=PRG_ROM_END => {
                 // Attempt to write to Cartridge ROM space
-                // Does nothing
+                panic!("ateempt to write to cartridge PRG ROM space");
             }
             _ => {
                 // Ignore access

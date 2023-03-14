@@ -1,4 +1,4 @@
-use crate::{cpu::{Memory, CPU, CpuFlags}};
+use crate::{cpu::{Memory, CPU, CPUFlags}};
 
 use super::CPUError;
 
@@ -206,39 +206,39 @@ fn test_0x0e_lsr() {
 #[test]
 fn test_rol_accumulator() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::CARRY);
+    cpu.status.insert(CPUFlags::CARRY);
     run_code(&mut cpu,vec![0xa9, 0b0100_00001, 0x2a, 0x00]).unwrap();
     assert_eq!(cpu.register_a, 0b0000_00011);
-    assert!(cpu.status.contains(CpuFlags::CARRY));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
 }
 
 #[test]
 fn test_0x2e_rol() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::CARRY);
+    cpu.status.insert(CPUFlags::CARRY);
     cpu.mem_write(0x10, 0b0100_00001);
     run_code(&mut cpu,vec![0x2e, 0x10, 0x00]).unwrap();
     assert_eq!(cpu.mem_read(0x10), 0b0000_00011);
-    assert!(cpu.status.contains(CpuFlags::CARRY));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
 }
 
 #[test]
 fn test_ror_accumulator() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::CARRY);
+    cpu.status.insert(CPUFlags::CARRY);
     run_code(&mut cpu,vec![0xa9, 0b0000_00010, 0x6a, 0x00]).unwrap();
     assert_eq!(cpu.register_a, 0b0100_00001);
-    assert!(!cpu.status.contains(CpuFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::CARRY));
 }
 
 #[test]
 fn test_0x6e_ror() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::CARRY);
+    cpu.status.insert(CPUFlags::CARRY);
     cpu.mem_write(0x10, 0b0000_00010);
     run_code(&mut cpu,vec![0x6e, 0x10, 0x00]).unwrap();
     assert_eq!(cpu.mem_read(0x10), 0b0100_00001);
-    assert!(!cpu.status.contains(CpuFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::CARRY));
 }
 
 #[test]
@@ -288,20 +288,20 @@ fn test_0xcd_cmp() {
     cpu.register_a = 0x01;
     cpu.mem_write(0x10, 0x01);
     run_code(&mut cpu,vec![0xcd, 0x10, 0x00]).unwrap();
-    assert!(cpu.status.contains(CpuFlags::CARRY));
-    assert!(cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
+    assert!(cpu.status.contains(CPUFlags::ZERO));
     // A < M
     cpu.register_a = 0x01;
     cpu.mem_write(0x10, 0x05);
     run_code(&mut cpu,vec![0xcd, 0x10, 0x00]).unwrap();
-    assert!(!cpu.status.contains(CpuFlags::CARRY));
-    assert!(!cpu.status.contains(CpuFlags::ZERO));
+    assert!(!cpu.status.contains(CPUFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::ZERO));
     // A > M
     cpu.register_a = 0x05;
     cpu.mem_write(0x10, 0x01);
     run_code(&mut cpu,vec![0xcd, 0x10, 0x00]).unwrap();
-    assert!(cpu.status.contains(CpuFlags::CARRY));
-    assert!(!cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::ZERO));
 }
 
 #[test]
@@ -311,20 +311,20 @@ fn test_0xcc_cpy() {
     cpu.register_y = 0x01;
     cpu.mem_write(0x10, 0x01);
     run_code(&mut cpu,vec![0xcc, 0x10, 0x00]).unwrap();
-    assert!(cpu.status.contains(CpuFlags::CARRY));
-    assert!(cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
+    assert!(cpu.status.contains(CPUFlags::ZERO));
     // X < M
     cpu.register_y = 0x01;
     cpu.mem_write(0x10, 0x05);
     run_code(&mut cpu,vec![0xcc, 0x10, 0x00]).unwrap();
-    assert!(!cpu.status.contains(CpuFlags::CARRY));
-    assert!(!cpu.status.contains(CpuFlags::ZERO));
+    assert!(!cpu.status.contains(CPUFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::ZERO));
     // X > M
     cpu.register_y = 0x05;
     cpu.mem_write(0x10, 0x01);
     run_code(&mut cpu,vec![0xcc, 0x10, 0x00]).unwrap();
-    assert!(cpu.status.contains(CpuFlags::CARRY));
-    assert!(!cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::ZERO));
 }
 
 #[test]
@@ -334,20 +334,20 @@ fn test_0xec_cpx() {
     cpu.register_x = 0x01;
     cpu.mem_write(0x10, 0x01);
     run_code(&mut cpu,vec![0xec, 0x10, 0x00]).unwrap();
-    assert!(cpu.status.contains(CpuFlags::CARRY));
-    assert!(cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
+    assert!(cpu.status.contains(CPUFlags::ZERO));
     // X < M
     cpu.register_x = 0x01;
     cpu.mem_write(0x10, 0x05);
     run_code(&mut cpu,vec![0xec, 0x10, 0x00]).unwrap();
-    assert!(!cpu.status.contains(CpuFlags::CARRY));
-    assert!(!cpu.status.contains(CpuFlags::ZERO));
+    assert!(!cpu.status.contains(CPUFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::ZERO));
     // X > M
     cpu.register_x = 0x05;
     cpu.mem_write(0x10, 0x01);
     run_code(&mut cpu,vec![0xec, 0x10, 0x00]).unwrap();
-    assert!(cpu.status.contains(CpuFlags::CARRY));
-    assert!(!cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CPUFlags::CARRY));
+    assert!(!cpu.status.contains(CPUFlags::ZERO));
 }
 
 #[test]
@@ -384,7 +384,7 @@ fn test_rti() {
 #[test]
 fn test_bne() {
     let mut cpu = CPU::new();
-    cpu.status.remove(CpuFlags::ZERO);
+    cpu.status.remove(CPUFlags::ZERO);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0xd0, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -393,7 +393,7 @@ fn test_bne() {
 #[test]
 fn test_bvs() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::OVERFLOW);
+    cpu.status.insert(CPUFlags::OVERFLOW);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0x70, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -402,7 +402,7 @@ fn test_bvs() {
 #[test]
 fn test_bvc() {
     let mut cpu = CPU::new();
-    cpu.status.remove(CpuFlags::OVERFLOW);
+    cpu.status.remove(CPUFlags::OVERFLOW);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0x50, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -411,7 +411,7 @@ fn test_bvc() {
 #[test]
 fn test_bpl() {
     let mut cpu = CPU::new();
-    cpu.status.remove(CpuFlags::NEGATIV);
+    cpu.status.remove(CPUFlags::NEGATIV);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0x10, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -420,7 +420,7 @@ fn test_bpl() {
 #[test]
 fn test_bmi() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::NEGATIV);
+    cpu.status.insert(CPUFlags::NEGATIV);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0x30, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -429,7 +429,7 @@ fn test_bmi() {
 #[test]
 fn test_beq() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::ZERO);
+    cpu.status.insert(CPUFlags::ZERO);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0xf0, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -438,7 +438,7 @@ fn test_beq() {
 #[test]
 fn test_bcs() {
     let mut cpu = CPU::new();
-    cpu.status.insert(CpuFlags::CARRY);
+    cpu.status.insert(CPUFlags::CARRY);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0xb0, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -447,7 +447,7 @@ fn test_bcs() {
 #[test]
 fn test_bcc() {
     let mut cpu = CPU::new();
-    cpu.status.remove(CpuFlags::CARRY);
+    cpu.status.remove(CPUFlags::CARRY);
     // Push 5 in a if branching is ok
     run_code(&mut cpu,vec![0x90, 0x01, 0x00, 0xa9, 0x05]).unwrap();
     assert_eq!(cpu.register_a, 0x05);
@@ -458,7 +458,7 @@ fn test_0x2c_bit() {
     let mut cpu = CPU::new();
     cpu.register_a = 0x05;
     run_code(&mut cpu,vec![0x2c, 0x05, 0x00]).unwrap();
-    assert!(cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CPUFlags::ZERO));
 }
 
 #[test]

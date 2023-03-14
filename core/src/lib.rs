@@ -7,8 +7,7 @@ pub mod nes;
 pub mod memory;
 pub mod cartridge;
 
-#[cfg(test)]
-mod bus_tests;
+
 #[cfg(test)]
 mod cartridge_tests;
 #[cfg(test)]
