@@ -1,23 +1,22 @@
 use std::{
     fs::File,
     io::{BufRead, BufReader},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use crate::{cartridge::Cartridge, cpu::trace::Trace, nes::NES};
 
-fn load_trace(file: impl AsRef<Path>) -> Vec<String> {
-    let file = File::open(file).expect("no such file");
-    let buf = BufReader::new(file);
-    buf.lines()
-        .map(|l| l.expect("could not parse line"))
-        .collect()
-}
+use super::tools::load_trace;
 
 fn run_test_suite(cartridge_file: &str, log_file: &str, start_at: Option<u16>) {
-    let expected = load_trace(log_file);
-    let cartridge = Cartridge::from_file(cartridge_file).unwrap();
-    let mut nes = NES::new();
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let mut cartridge_file_path = path.clone();
+    cartridge_file_path.push(cartridge_file);
+    let mut log_file_path = path.clone();
+    log_file_path.push(log_file);
+    let expected = load_trace(log_file_path).unwrap();
+    let cartridge = Cartridge::from_file(cartridge_file_path).unwrap();
+    let mut nes = NES::new(None, None);
     nes.insert(cartridge);
     nes.reset();
     if let Some(start_at) = start_at {
@@ -34,7 +33,7 @@ fn run_test_suite(cartridge_file: &str, log_file: &str, start_at: Option<u16>) {
             expected[counter - 1].split(" PPU").collect::<Vec<&str>>()[0]
         );
         counter += 1;
-    })
+    }, |_ ,_, _| {})
     .unwrap();
 }
 
@@ -58,13 +57,13 @@ fn test_run() {
         mapper: 0,
         screen_mirroring: crate::cartridge::Mirroring::FourScreen,
     };
-    let mut nes = NES::new();
+    let mut nes = NES::new(None, None);
     nes.insert(cartridge);
     nes.reset();
     let mut inst_count = 0;
     nes.run(|_| {
         inst_count += 1;
-    })
+    }, |_,_, _| {})
     .unwrap();
     assert_eq!(inst_count, 3)
 }

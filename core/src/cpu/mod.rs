@@ -22,6 +22,8 @@ mod unofficial_instruction;
 #[cfg(test)]
 mod unofficial_instruction_tests;
 
+mod interrupt;
+
 pub mod memory;
 mod opcode;
 pub mod trace;
@@ -58,6 +60,7 @@ const STACK: u16 = 0x0100;
 const STACK_RESET: u8 = 0xfd;
 
 /// CPU.
+#[derive(Debug, Clone)]
 pub struct CPU {
     register_a: u8,
     register_x: u8,
@@ -95,6 +98,7 @@ impl CPU {
         }
     }
 
+    /// Connects CPU to bus.
     pub fn connect_bus(&mut self, bus: &Rc<RefCell<CPUBus>>) {
         self.bus = Some(Rc::clone(bus));
     }
@@ -301,12 +305,33 @@ impl CPU {
         self.remaining_cycles = 0;
     }
 
+    fn interrupt(&mut self, interrupt: interrupt::Interrupt) {
+        self.stack_push_u16(self.program_counter);
+        let mut flag = self.status.clone();
+        flag.set(CPUFlags::BREAK, interrupt.b_flag_mask & 0b010000 == 1);
+        flag.set(CPUFlags::BREAK2, interrupt.b_flag_mask & 0b100000 == 1);
+
+        self.stack_push(flag.bits);
+        self.status.insert(CPUFlags::INTERRUPT_DISABLE);
+
+        self.remaining_cycles += interrupt.cpu_cycles;
+
+        self.program_counter = self.mem_read_u16(interrupt.vector_addr);
+    }
+
     /// Processes next cycle.
     /// Returns false if BRK is called.
     pub fn tick(&mut self) -> Result<bool, CPUError> {
         if self.remaining_cycles > 0 {
             self.remaining_cycles -= 1;
         } else {
+            // Handle NMI interrupt
+            if let Some(bus) = &self.bus {
+                if bus.borrow_mut().poll_nmi_status() {
+                    self.interrupt(interrupt::NMI);
+                }
+            }
+
             let ref opcodes: HashMap<u8, &'static opcode::OpCode> = *opcode::OPCODES_MAP;
             let code = self.mem_read(self.program_counter);
 
@@ -322,6 +347,8 @@ impl CPU {
             self.program_counter += 1;
             let program_counter_state = self.program_counter;
 
+            let mut brk = false;
+
             match code {
                 /* LDA */
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => self.lda(&opcode.mode),
@@ -334,6 +361,13 @@ impl CPU {
 
                 /* BRK */
                 0x00 => return Ok(false),
+                // Belows results in "attempt to write to cartridge PRG ROM space"
+                /*0x00 => {
+                    self.program_counter += 1;
+                    if !self.status.contains(CPUFlags::INTERRUPT_DISABLE) {
+                        self.interrupt(interrupt::BRK);
+                    }
+                }*/
 
                 /* CLD */
                 0xd8 => self.cld(),
@@ -534,7 +568,8 @@ impl CPU {
                 /* *NOP read */
                 0x04 | 0x44 | 0x64 | 0x14 | 0x34 | 0x54 | 0x74 | 0xd4 | 0xf4 | 0x0c | 0x1c
                 | 0x3c | 0x5c | 0x7c | 0xdc | 0xfc => {
-                    let (_, page_cross) = self.get_operand_address(&opcode.mode);
+                    let (addr, page_cross) = self.get_operand_address(&opcode.mode);
+                    let data = self.mem_read(addr);
                     if page_cross {
                         self.remaining_cycles += 1;
                     }
@@ -631,5 +666,10 @@ impl CPU {
 
     pub fn run(&mut self) -> Result<(), CPUError> {
         self.run_with_callback(|_| {})
+    }
+
+    /// Indicates if CPU instruction changed since last tick.
+    pub fn instruction_changed(&self) -> bool {
+        self.remaining_cycles == 0
     }
 }
