@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, rc::Rc};
 
 use crate::{
     bus::{cpu_bus::CPUBus, ppu_bus::PPUBus},
@@ -6,6 +6,7 @@ use crate::{
     controller::Joypad,
     cpu::{CPUError, CPU},
     ppu::{PPUError, PPU},
+    renderer::{frame::Frame, render_screen},
 };
 
 pub mod tools;
@@ -40,6 +41,7 @@ pub struct NES {
     ppu_bus: Rc<RefCell<PPUBus>>,
     joypad1: Option<Rc<RefCell<Joypad>>>,
     joypad2: Option<Rc<RefCell<Joypad>>>,
+    frame: Frame,
 }
 
 impl NES {
@@ -57,6 +59,7 @@ impl NES {
                 Some(j) => Some(Rc::new(RefCell::new(j))),
                 None => None,
             },
+            frame: Frame::new(),
         };
         // Connects CPU bus to CPU
         this.cpu.connect_bus(&this.cpu_bus);
@@ -97,7 +100,7 @@ impl NES {
     ) -> Result<(), NESError>
     where
         F1: FnMut(&mut CPU),
-        F2: FnMut(&mut PPU, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>),
+        F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>),
     {
         let mut cont = true;
 
@@ -111,14 +114,17 @@ impl NES {
             }
             cont = self.cpu.tick()?;
 
-            // PPU runs 3x faster thant CPU
+            // PPU runs 3x faster than CPU
             self.ppu.borrow_mut().tick(3)?;
 
             let nmi_after = self.ppu.borrow_mut().nmi_interrupt();
 
             if !nmi_before && nmi_after {
+                // Update frame
+                render_screen(&self.ppu.borrow_mut(), &mut self.frame);
+
                 ppu_callback(
-                    &mut self.ppu.borrow_mut(),
+                    &self.frame,
                     match &mut self.joypad1 {
                         Some(j) => Some(j),
                         None => None,

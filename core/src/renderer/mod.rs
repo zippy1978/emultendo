@@ -101,7 +101,7 @@ pub fn render_screen(ppu: &PPU, frame: &mut Frame) {
         &bus,
         frame,
         main_nametable,
-        Rect::new(scroll_x, scroll_y, 256, 240),
+        Rect::new(scroll_x, scroll_y, Frame::WIDTH, Frame::HEIGHT),
         -(scroll_x as isize),
         -(scroll_y as isize),
     );
@@ -111,8 +111,8 @@ pub fn render_screen(ppu: &PPU, frame: &mut Frame) {
             &bus,
             frame,
             second_nametable,
-            Rect::new(0, 0, scroll_x, 240),
-            (256 - scroll_x) as isize,
+            Rect::new(0, 0, scroll_x, Frame::HEIGHT),
+            (Frame::WIDTH - scroll_x) as isize,
             0,
         );
     } else if scroll_y > 0 {
@@ -121,9 +121,9 @@ pub fn render_screen(ppu: &PPU, frame: &mut Frame) {
             &bus,
             frame,
             second_nametable,
-            Rect::new(0, 0, 256, scroll_y),
+            Rect::new(0, 0, Frame::WIDTH, scroll_y),
             0,
-            (240 - scroll_y) as isize,
+            (Frame::HEIGHT - scroll_y) as isize,
         );
     }
 

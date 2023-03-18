@@ -68,14 +68,11 @@ fn main() {
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
-    let mut frame = Frame::new();
-
     nes.run(
         |_| {},
-        |ppu, joypad1, joypad2| {
-            render_screen(ppu, &mut frame);
+        |frame, joypad1, joypad2| {
+           
             //frame_to_file(&frame, "frame.png");
-
             texture.update(None, &frame.data(), 256 * 3).unwrap();
 
             canvas.copy(&texture, None, None).unwrap();

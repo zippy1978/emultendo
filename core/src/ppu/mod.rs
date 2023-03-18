@@ -79,6 +79,14 @@ impl PPU {
         &self.scroll
     }
 
+    pub fn cycles(&self) -> usize {
+        self.cycles
+    }
+
+    pub fn scanline(&self) -> u16 {
+        self.scanline
+    }
+ 
     /// Connects PPU to bus.
     pub fn connect_bus(&mut self, bus: &Rc<RefCell<PPUBus>>) {
         self.bus = Some(Rc::clone(bus));
