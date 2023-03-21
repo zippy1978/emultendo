@@ -1,4 +1,4 @@
-use crate::{bus::ppu_bus::PPUBus, ppu::PPU};
+use crate::bus::ppu_bus::PPUBus;
 
 pub static SYSTEM_PALETTE: [(u8, u8, u8); 64] = [
     (0x80, 0x80, 0x80),
@@ -67,9 +67,14 @@ pub static SYSTEM_PALETTE: [(u8, u8, u8); 64] = [
     (0x11, 0x11, 0x11),
 ];
 
-pub(crate) fn bg_palette(bus: &PPUBus, attribute_table: &[u8], tile_column: usize, tile_row: usize) -> [u8; 4] {
+pub(crate) fn bg_palette(
+    bus: &PPUBus,
+    attribute_table: &[u8],
+    tile_column: usize,
+    tile_row: usize,
+) -> [u8; 4] {
     let attr_table_idx = tile_row / 4 * 8 + tile_column / 4;
-    let attr_byte = attribute_table[attr_table_idx]; 
+    let attr_byte = attribute_table[attr_table_idx];
 
     let pallet_idx = match (tile_column % 4 / 2, tile_row % 4 / 2) {
         (0, 0) => attr_byte & 0b11,

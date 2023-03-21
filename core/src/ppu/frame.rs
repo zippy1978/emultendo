@@ -1,4 +1,5 @@
 /// Render frame.
+#[derive(Debug, Clone)]
 pub struct Frame {
     data: Vec<u8>,
  }

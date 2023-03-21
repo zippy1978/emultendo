@@ -53,9 +53,9 @@ fn test_run() {
 
     let cartridge = Cartridge {
         prg_rom: prg_rom.to_vec(),
-        chr_rom: vec![],
+        chr_rom: [0; 2048].to_vec(),
         mapper: 0,
-        screen_mirroring: crate::cartridge::Mirroring::FourScreen,
+        screen_mirroring: crate::cartridge::Mirroring::Vertical,
     };
     let mut nes = NES::new(None, None);
     nes.insert(cartridge);

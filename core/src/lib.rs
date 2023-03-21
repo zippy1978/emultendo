@@ -7,7 +7,6 @@ pub mod bus;
 pub mod nes;
 pub mod memory;
 pub mod cartridge;
-pub mod renderer;
 pub mod controller;
 
 

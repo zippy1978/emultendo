@@ -2,9 +2,8 @@ use std::{collections::HashMap, path::Path};
 
 use emultendo_core::{
     cartridge::Cartridge,
-    controller::{JoypadButton, Joypad},
-    nes::NES,
-    renderer::{frame::Frame, render_screen, render_tiles_bank},
+    controller::{Joypad, JoypadButton},
+    nes::{NES, tools::render_tiles_bank}, ppu::frame::Frame,
 };
 use image::RgbImage;
 
@@ -30,7 +29,7 @@ fn frame_to_file(frame: &Frame, file: &str) {
 }
 
 fn main() {
-    let game = "games/smario.nes";
+    let game = "games/ice.nes";
 
     //dump_tiles(game);
 
@@ -71,7 +70,6 @@ fn main() {
     nes.run(
         |_| {},
         |frame, joypad1, joypad2| {
-           
             //frame_to_file(&frame, "frame.png");
             texture.update(None, &frame.data(), 256 * 3).unwrap();
 

@@ -3,8 +3,13 @@ use std::{cell::RefCell, rc::Rc};
 use crate::bus::ppu_bus::PPUBus;
 
 use self::{
-    addr_register::AddrRegister, control_register::ControlRegister, mask_register::MaskRegister,
-    scroll_register::ScrollRegister, status_register::StatusRegister,
+    addr_register::AddrRegister,
+    control_register::ControlRegister,
+    frame::Frame,
+    mask_register::MaskRegister,
+    render::{render_background_sync, render_sprites},
+    scroll_register::ScrollRegister,
+    status_register::StatusRegister,
 };
 
 mod addr_register;
@@ -18,6 +23,11 @@ mod control_register_tests;
 mod mask_register;
 mod scroll_register;
 mod status_register;
+
+pub mod frame;
+pub mod palette;
+pub mod rect;
+pub mod render;
 
 /// PPU Error.
 #[derive(Debug)]
@@ -39,6 +49,7 @@ pub struct PPU {
     cycles: usize,
     nmi_interrupt: bool,
     bus: Option<Rc<RefCell<PPUBus>>>,
+    frame: Rc<RefCell<Frame>>,
 }
 
 impl PPU {
@@ -56,7 +67,12 @@ impl PPU {
             cycles: 0,
             nmi_interrupt: false,
             bus: None,
+            frame: Rc::new(RefCell::new(Frame::new())),
         }
+    }
+
+    pub fn frame(&self) -> &Rc<RefCell<Frame>> {
+        &self.frame
     }
 
     pub fn nmi_interrupt(&self) -> bool {
@@ -79,6 +95,10 @@ impl PPU {
         &self.scroll
     }
 
+    pub fn status(&self) -> &StatusRegister {
+        &self.status
+    }
+
     pub fn cycles(&self) -> usize {
         self.cycles
     }
@@ -86,7 +106,7 @@ impl PPU {
     pub fn scanline(&self) -> u16 {
         self.scanline
     }
- 
+
     /// Connects PPU to bus.
     pub fn connect_bus(&mut self, bus: &Rc<RefCell<PPUBus>>) {
         self.bus = Some(Rc::clone(bus));
@@ -177,32 +197,27 @@ impl PPU {
         self.increment_vram_addr();
     }
 
-    fn is_sprite_0_hit(&self, cycle: usize) -> bool {
-        let y = self.oam_data[0] as usize;
-        let x = self.oam_data[3] as usize;
-        // TODO: consider checking opaque pixels of a sprite colliding with opaque pixels of background
-        // for more accuracy
-        (y == self.scanline as usize) && x <= cycle && self.mask.show_sprites()
-    }
-
     /// Processes next cycle.
-    /// Returns true when a full new frame is ready
-    pub fn tick(&mut self, cycles: u8) -> Result<bool, PPUError> {
-        self.cycles += cycles as usize;
-        if self.cycles >= 341 {
-            // Tests sprite 0 hit.
-            if self.is_sprite_0_hit(self.cycles) {
-                self.status.set_sprite_zero_hit(true);
-            }
+    /// Returns true when a full scanline is ready
+    pub fn tick(&mut self) -> Result<bool, PPUError> {
+        // Render background in sync
+        if render_background_sync(self, &mut self.frame.borrow_mut()) {
+            self.status.set_sprite_zero_hit(true);
+        }
 
+        self.cycles += 1;
+        if self.cycles >= 341 {
             // End of scanline
             self.cycles = self.cycles - 341;
             self.scanline += 1;
 
             if self.scanline == 241 {
                 // End of visible screen
+
+                // Render sprites at once at the end of the screen
+                render_sprites(self, &mut self.frame.borrow_mut());
+
                 self.status.set_vblank_status(true);
-                self.status.set_sprite_zero_hit(false);
                 if self.ctrl.generate_vblank_nmi() {
                     self.nmi_interrupt = true;
                 }
@@ -211,10 +226,17 @@ impl PPU {
             if self.scanline >= 262 {
                 self.scanline = 0;
                 self.nmi_interrupt = false;
-                self.status.set_sprite_zero_hit(false);
                 self.status.reset_vblank_status();
-                return Ok(true);
+                self.status.set_sprite_zero_hit(false);
+
+                // Seems that name table addr must be reset after each frame
+                // Source: https://archive.nes.science/nesdev-forums/f3/t12185.xhtml
+                // But is it the proper way ?
+                self.ctrl.set(ControlRegister::NAMETABLE1, false);
+                self.ctrl.set(ControlRegister::NAMETABLE2, false);
             }
+
+            return Ok(true);
         }
         Ok(false)
     }
@@ -226,5 +248,4 @@ impl PPU {
         self.nmi_interrupt = false;
         status
     }
-
 }
