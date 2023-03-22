@@ -53,14 +53,14 @@ fn main() {
     // Create event pump
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    // Create console
-    // plug only joypad1, other Super Mario does not work
-    let mut nes = NES::new(Some(Joypad::new()), None);
-
     // Game filename
     let mut game_filename: Option<Box<String>> = None;
 
     loop {
+        // Create console
+        // plug only joypad1, other Super Mario does not work
+        let mut nes = NES::new(Some(Joypad::new()), None);
+
         // Load game to cartridge (if game file)
         // then insert cartridge and reset
         if let Some(game_filename) = &game_filename {
