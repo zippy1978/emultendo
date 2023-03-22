@@ -57,6 +57,11 @@ impl CPUBus {
         }
     }
 
+    /// Checks if a cartridge is connected
+    pub fn cartridge_connected(&self) -> bool {
+        self.prg_rom.len() > 0
+    }
+
     /// Connects a cartridge to the bus.
     pub fn connect_cartridge(&mut self, cartridge: &Cartridge) {
         self.prg_rom = cartridge.prg_rom.clone();

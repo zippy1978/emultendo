@@ -5,7 +5,7 @@ use crate::{
     cartridge::Cartridge,
     controller::Joypad,
     cpu::{CPUError, CPU},
-    ppu::{PPUError, PPU, frame::Frame},
+    ppu::{frame::Frame, PPUError, PPU},
 };
 
 pub mod tools;
@@ -97,30 +97,43 @@ impl NES {
     ) -> Result<(), NESError>
     where
         F1: FnMut(&mut CPU),
-        F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>),
+        F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,
     {
         let mut cont = true;
 
         while cont {
-            let nmi_before = self.ppu.borrow_mut().nmi_interrupt();
+            if self.ppu_bus.borrow_mut().cartridge_connected() {
+                let nmi_before = self.ppu.borrow_mut().nmi_interrupt();
 
-            // CPU callback is called only on instruction change
-            // Not for every cycle
-            if self.cpu.instruction_changed() {
-                cpu_callback(&mut self.cpu);
-            }
-            cont = self.cpu.tick()?;
+                // CPU callback is called only on instruction change
+                // Not for every cycle
+                if self.cpu.instruction_changed() {
+                    cpu_callback(&mut self.cpu);
+                }
+                cont = self.cpu.tick()?;
 
-            // PPU runs 3x faster than CPU
-            for _ in 0..3 {
-                self.ppu.borrow_mut().tick()?;
-            }
+                // PPU runs 3x faster than CPU
+                for _ in 0..3 {
+                    self.ppu.borrow_mut().tick()?;
+                }
 
-            let nmi_after = self.ppu.borrow_mut().nmi_interrupt();
+                let nmi_after = self.ppu.borrow_mut().nmi_interrupt();
 
-            if !nmi_before && nmi_after {
-
-                ppu_callback(
+                if !nmi_before && nmi_after {
+                    cont = ppu_callback(
+                        &self.ppu.borrow_mut().frame().borrow(),
+                        match &mut self.joypad1 {
+                            Some(j) => Some(j),
+                            None => None,
+                        },
+                        match &mut self.joypad2 {
+                            Some(j) => Some(j),
+                            None => None,
+                        },
+                    );
+                }
+            } else {
+                cont = ppu_callback(
                     &self.ppu.borrow_mut().frame().borrow(),
                     match &mut self.joypad1 {
                         Some(j) => Some(j),

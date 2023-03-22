@@ -27,6 +27,11 @@ impl PPUBus {
         self.vram[addr as usize] = value;
     }
 
+    /// Checks if a cartridge is connected
+    pub fn cartridge_connected(&self) -> bool {
+        self.chr_rom.len() > 0
+    }
+
     pub fn vram(&self) -> &[u8; 2048] {
         &self.vram
     }

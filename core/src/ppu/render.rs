@@ -3,7 +3,8 @@ use crate::{bus::ppu_bus::PPUBus, cartridge::Mirroring, ppu::PPU};
 use super::{
     frame::Frame,
     palette::{self, bg_palette, sprite_palette},
-    rect::Rect, status_register::StatusRegister,
+    rect::Rect,
+    status_register::StatusRegister,
 };
 
 fn render_name_table_sync(
@@ -15,9 +16,15 @@ fn render_name_table_sync(
     shift_x: isize,
     shift_y: isize,
 ) -> bool {
-    
-    let cycles = ppu.cycles as usize;
+    let cycles = ppu.cycle as usize;
     let scanline = ppu.scanline as usize;
+
+    // Don't draw background if disabled
+    let background_visible =
+        ppu.mask.show_background() && (ppu.mask.leftmost_8pxl_background() || cycles >= 8);
+    if !background_visible {
+        return false;
+    }
 
     // Pixel must be in viewport
     if cycles < view_port.x1
@@ -81,6 +88,13 @@ fn render_name_table_sync(
 }
 
 fn sprite_zero_hit_at(ppu: &PPU, bus: &PPUBus, test_x: usize, test_y: usize) -> bool {
+    // No hit if sprites are not visible
+    let sprites_visible =
+        ppu.mask.show_sprites() && (ppu.mask.leftmost_8pxl_sprite() || test_x >= 8);
+    if !sprites_visible {
+        return false;
+    }
+
     let tile_idx = ppu.oam_data[1] as u16;
     let tile_x = ppu.oam_data[3] as usize;
     let tile_y = ppu.oam_data[0] as usize;
@@ -128,7 +142,6 @@ pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
     let scroll_x = (ppu.scroll.scroll_x) as usize;
     let scroll_y = (ppu.scroll.scroll_y) as usize;
 
-
     // Determine main and second table
     let (main_nametable, second_nametable) = match (&bus.mirroring(), ppu.ctrl.nametable_addr()) {
         (Mirroring::Vertical, 0x2000)
@@ -140,11 +153,11 @@ pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
         | (Mirroring::Horizontal, 0x2800)
         | (Mirroring::Horizontal, 0x2C00) => (&bus.vram()[0x400..0x800], &bus.vram()[0..0x400]),
         (_, _) => {
-            panic!("Not supported mirroring type {:?}", bus.mirroring());
+            panic!("unsupported mirroring type {:?}", bus.mirroring());
         }
     };
 
-    // Background
+    // Top left
     sprite_zero_hit = sprite_zero_hit
         || render_name_table_sync(
             ppu,
@@ -155,29 +168,50 @@ pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
             -(scroll_x as isize),
             -(scroll_y as isize),
         );
-    if scroll_x > 0 {
-        sprite_zero_hit = sprite_zero_hit
-            || render_name_table_sync(
-                ppu,
-                &bus,
-                frame,
-                second_nametable,
-                Rect::new(0, 0, scroll_x, Frame::HEIGHT),
-                (Frame::WIDTH - scroll_x) as isize,
-                0,
-            );
-    } else if scroll_y > 0 {
-        sprite_zero_hit = sprite_zero_hit
-            || render_name_table_sync(
-                ppu,
-                &bus,
-                frame,
-                second_nametable,
-                Rect::new(0, 0, Frame::WIDTH, scroll_y),
-                0,
-                (Frame::HEIGHT - scroll_y) as isize,
-            );
-    }
+
+    // Bottom left
+    sprite_zero_hit = sprite_zero_hit
+        || render_name_table_sync(
+            ppu,
+            &bus,
+            frame,
+            if matches!(bus.mirroring(), Mirroring::Vertical) {
+                main_nametable
+            } else {
+                second_nametable
+            },
+            Rect::new(scroll_x, 0, Frame::WIDTH, Frame::HEIGHT),
+            -(scroll_x as isize),
+            (Frame::HEIGHT - scroll_y) as isize,
+        );
+
+    // Top right
+    sprite_zero_hit = sprite_zero_hit
+        || render_name_table_sync(
+            ppu,
+            &bus,
+            frame,
+            if matches!(bus.mirroring(), Mirroring::Vertical) {
+                second_nametable
+            } else {
+                main_nametable
+            },
+            Rect::new(0, scroll_y, scroll_x, Frame::HEIGHT),
+            (Frame::WIDTH - scroll_x) as isize,
+            -(scroll_y as isize),
+        );
+
+    // Bottom right
+    sprite_zero_hit = sprite_zero_hit
+        || render_name_table_sync(
+            ppu,
+            &bus,
+            frame,
+            second_nametable,
+            Rect::new(0, 0, Frame::WIDTH, Frame::HEIGHT),
+            (Frame::WIDTH - scroll_x) as isize,
+            (Frame::HEIGHT - scroll_y) as isize,
+        );
 
     sprite_zero_hit
 }

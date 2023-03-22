@@ -46,7 +46,7 @@ pub struct PPU {
     oam_addr: u8,
     oam_data: [u8; 256],
     scanline: u16,
-    cycles: usize,
+    cycle: usize,
     nmi_interrupt: bool,
     bus: Option<Rc<RefCell<PPUBus>>>,
     frame: Rc<RefCell<Frame>>,
@@ -64,7 +64,7 @@ impl PPU {
             oam_addr: 0,
             oam_data: [0; 64 * 4],
             scanline: 0,
-            cycles: 0,
+            cycle: 0,
             nmi_interrupt: false,
             bus: None,
             frame: Rc::new(RefCell::new(Frame::new())),
@@ -100,7 +100,7 @@ impl PPU {
     }
 
     pub fn cycles(&self) -> usize {
-        self.cycles
+        self.cycle
     }
 
     pub fn scanline(&self) -> u16 {
@@ -205,10 +205,10 @@ impl PPU {
             self.status.set_sprite_zero_hit(true);
         }
 
-        self.cycles += 1;
-        if self.cycles >= 341 {
+        self.cycle += 1;
+        if self.cycle >= 341 {
             // End of scanline
-            self.cycles = self.cycles - 341;
+            self.cycle = self.cycle - 341;
             self.scanline += 1;
 
             if self.scanline == 241 {
@@ -228,6 +228,7 @@ impl PPU {
                 self.nmi_interrupt = false;
                 self.status.reset_vblank_status();
                 self.status.set_sprite_zero_hit(false);
+                self.status.set_sprite_overflow(false);
 
                 // Seems that name table addr must be reset after each frame
                 // Source: https://archive.nes.science/nesdev-forums/f3/t12185.xhtml

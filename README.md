@@ -3,3 +3,5 @@
 - set cycle clock for "real speed"
 - More unit tests
 - APU
+- Sprite draw order !!!
+- Overall: new PPU implem
