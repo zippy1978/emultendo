@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::memory::Memory;
 
-use super::{instruction::AddressingMode, CPU, opcode};
+use super::{instruction::AddressingMode, Cpu, opcode};
 
 
 /// CPU tracing.
@@ -10,7 +10,7 @@ pub trait Trace {
     fn trace(&mut self) -> String;
 }
 
-impl Trace for CPU {
+impl Trace for Cpu {
 
     /// Traces CPU state to String.
     fn trace(&mut self) -> String {

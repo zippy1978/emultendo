@@ -1,8 +1,8 @@
 use crate::memory::Memory;
 
-use super::CPU;
+use super::Cpu;
 
-impl Memory for CPU {
+impl Memory for Cpu {
     fn mem_read(&mut self, addr: u16) -> u8 {
         if let Some(bus) = &self.bus {
             bus.borrow_mut().mem_read(addr)

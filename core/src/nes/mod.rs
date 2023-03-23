@@ -4,7 +4,7 @@ use crate::{
     bus::{cpu_bus::CpuBus, ppu_bus::PpuBus},
     cartridge::Cartridge,
     controller::Joypad,
-    cpu::{CPUError, CPU},
+    cpu::{CpuError, Cpu},
     ppu::{frame::Frame, PpuError, Ppu},
 };
 
@@ -16,12 +16,12 @@ mod mod_tests;
 /// NES Error.
 #[derive(Debug)]
 pub enum NesError {
-    Cpu(CPUError),
+    Cpu(CpuError),
     Ppu(PpuError),
 }
 
-impl From<CPUError> for NesError {
-    fn from(value: CPUError) -> Self {
+impl From<CpuError> for NesError {
+    fn from(value: CpuError) -> Self {
         Self::Cpu(value)
     }
 }
@@ -34,7 +34,7 @@ impl From<PpuError> for NesError {
 
 /// NES console.
 pub struct Nes {
-    cpu: CPU,
+    cpu: Cpu,
     cpu_bus: Rc<RefCell<CpuBus>>,
     ppu: Rc<RefCell<Ppu>>,
     ppu_bus: Rc<RefCell<PpuBus>>,
@@ -45,7 +45,7 @@ pub struct Nes {
 impl Nes {
     pub fn new(joypad1: Option<Joypad>, joypad2: Option<Joypad>) -> Self {
         let mut this = Self {
-            cpu: CPU::new(),
+            cpu: Cpu::new(),
             cpu_bus: Rc::new(RefCell::new(CpuBus::new())),
             ppu: Rc::new(RefCell::new(Ppu::new())),
             ppu_bus: Rc::new(RefCell::new(PpuBus::new())),
@@ -87,7 +87,7 @@ impl Nes {
 
     #[cfg(test)]
     pub fn start_at(&mut self, addr: u16) {
-        self.cpu.program_counter = addr;
+        self.cpu.set_program_counter(addr);
     }
 
     pub fn run<F1, F2>(
@@ -96,7 +96,7 @@ impl Nes {
         mut ppu_callback: F2,
     ) -> Result<(), NesError>
     where
-        F1: FnMut(&mut CPU),
+        F1: FnMut(&mut Cpu),
         F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,
     {
         let mut cont = true;

@@ -1,7 +1,8 @@
 use glium::glutin;
 use glium::glutin::event::{Event, WindowEvent};
 use glium::glutin::event_loop::{ControlFlow, EventLoop};
-use glium::glutin::window::WindowBuilder;
+use glium::glutin::platform::macos::WindowBuilderExtMacOS;
+use glium::glutin::window::{WindowBuilder};
 use glium::{Display, Surface};
 use imgui::{Context, FontConfig, FontGlyphRanges, FontSource, Ui};
 use imgui_glium_renderer::Renderer;
@@ -20,16 +21,25 @@ pub struct System {
     pub font_size: f32,
 }
 
-pub fn init(title: &str) -> System {
+pub fn init(title: &str, width: f64, height: f64) -> System {
     let title = match Path::new(&title).file_name() {
         Some(file_name) => file_name.to_str().unwrap(),
         None => title,
     };
     let event_loop = EventLoop::new();
-    let context = glutin::ContextBuilder::new().with_vsync(true);
+    let context = glutin::ContextBuilder::new()
+        .with_vsync(true)
+        .with_hardware_acceleration(Some(true));
+
     let builder = WindowBuilder::new()
         .with_title(title.to_owned())
-        .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
+        .with_transparent(true)
+        //.with_fullscreen(Some(Fullscreen::Borderless(())))
+        //.with_maximized(true)
+        .with_has_shadow(false)
+        .with_fullsize_content_view(true)
+        //.with_decorations(false)
+        .with_inner_size(glutin::dpi::LogicalSize::new(width, height));
     let display =
         Display::new(builder, context, &event_loop).expect("Failed to initialize display");
 
@@ -112,7 +122,10 @@ pub fn init(title: &str) -> System {
 }
 
 impl System {
-    pub fn main_loop<F: FnMut(&mut bool, &mut Ui, &mut Renderer, &mut glium::Display) + 'static>(self, mut run_ui: F) {
+    pub fn main_loop<F: FnMut(&mut bool, &mut Ui, &mut Renderer, &mut glium::Display) + 'static>(
+        self,
+        mut run_ui: F,
+    ) {
         let System {
             event_loop,
             mut display,
@@ -147,7 +160,7 @@ impl System {
 
                 let gl_window = display.gl_window();
                 let mut target = display.draw();
-                target.clear_color_srgb(1.0, 1.0, 1.0, 1.0);
+                target.clear_color_srgb(0.0, 0.0, 0.0, 0.25);
                 platform.prepare_render(ui, gl_window.window());
                 let draw_data = imgui.render();
                 renderer

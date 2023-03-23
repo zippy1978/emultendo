@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     bus::cpu_bus::CpuBus,
-    cpu::{trace::Trace, CPU},
+    cpu::{trace::Trace, Cpu},
     memory::Memory, ppu::Ppu,
 };
 
@@ -17,7 +17,7 @@ fn test_trace() {
     bus.borrow_mut().mem_write(103, 0x88);
     bus.borrow_mut().mem_write(104, 0x00);
 
-    let mut cpu = CPU::new();
+    let mut cpu = Cpu::new();
     cpu.connect_bus(&bus);
     cpu.program_counter = 0x64;
     cpu.register_a = 1;

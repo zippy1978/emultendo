@@ -1,4 +1,4 @@
-use std::{borrow::Cow, error::Error, rc::Rc};
+use std::{borrow::Cow, error::Error, rc::Rc, sync::Arc};
 
 use emultendo_core::ppu::frame::Frame;
 use glium::{
@@ -7,19 +7,25 @@ use glium::{
     uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior},
     Rect, Texture2d,
 };
-use imgui::{Image, TextureId, Textures, Ui};
+use imgui::{Condition, Image, Key, TextureId, Textures, Ui};
 use imgui_glium_renderer::Texture;
+
+use crate::renderable::Renderable;
 
 /// Renders NES display window.
 pub struct DisplayWindow {
     texture_id: Option<TextureId>,
+    start_pos: [f32; 2],
 }
 
 impl DisplayWindow {
     const PIXEL_SCALE: f32 = 2.0;
 
-    pub fn new() -> Self {
-        Self { texture_id: None }
+    pub fn new(x: f32, y: f32) -> Self {
+        Self {
+            texture_id: None,
+            start_pos: [x, y],
+        }
     }
 
     pub fn register_textures<F>(
@@ -53,48 +59,57 @@ impl DisplayWindow {
 
         Ok(())
     }
+}
 
-    pub fn update(
-        &mut self,
-        frame: &Frame,
+impl Renderable for DisplayWindow {
+    fn render(
+        &self,
+        ui: &Ui,
         textures: &Textures<Texture>,
-    ) -> Result<(), Box<dyn Error>> {
+        state: &mut Arc<std::sync::RwLock<crate::emulator::EmulatorState>>,
+    ) {
+        // Update texture with frame
         let raw = RawImage2d {
-            data: Cow::Owned(frame.data().to_vec()),
+            data: Cow::Owned(state.read().unwrap().frame.data().to_vec()),
             width: Frame::WIDTH as u32,
             height: Frame::HEIGHT as u32,
             format: ClientFormat::U8U8U8,
         };
 
-        match self.texture_id {
-            Some(tid) => {
-                let t = textures.get(tid).unwrap();
-                t.texture.write(
-                    Rect {
-                        left: 0,
-                        bottom: 0,
-                        width: Frame::WIDTH as u32,
-                        height: Frame::HEIGHT as u32,
-                    },
-                    raw,
-                );
-            }
-            None => {
-                return Err("textures not registered".into());
-            }
-        };
+        if let Some(texture_id) = self.texture_id {
+            let t = textures.get(texture_id).unwrap();
+            t.texture.write(
+                Rect {
+                    left: 0,
+                    bottom: 0,
+                    width: Frame::WIDTH as u32,
+                    height: Frame::HEIGHT as u32,
+                },
+                raw,
+            );
+        }
 
-        Ok(())
-    }
-    pub fn render(&self, ui: &Ui) {
         ui.window("Display")
             .resizable(false)
-            //.no_decoration()
+            .position(self.start_pos, Condition::FirstUseEver)
             .content_size([
                 Frame::WIDTH as f32 * Self::PIXEL_SCALE,
                 Frame::HEIGHT as f32 * Self::PIXEL_SCALE,
             ])
             .build(|| {
+                let mut state_lock = state.write().unwrap();
+                
+                // Update joypad state
+                state_lock.joypad1.start = ui.is_key_down(Key::Enter);
+                state_lock.joypad1.select = ui.is_key_down(Key::Space);
+                state_lock.joypad1.up = ui.is_key_down(Key::UpArrow);
+                state_lock.joypad1.down = ui.is_key_down(Key::DownArrow);
+                state_lock.joypad1.left = ui.is_key_down(Key::LeftArrow);
+                state_lock.joypad1.right = ui.is_key_down(Key::RightArrow);
+                state_lock.joypad1.a = ui.is_key_down(Key::A);
+                state_lock.joypad1.b = ui.is_key_down(Key::S);
+
+                // Render frame
                 if let Some(texture_id) = self.texture_id {
                     Image::new(
                         texture_id,
