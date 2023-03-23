@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{cartridge::Cartridge, cpu::trace::Trace, nes::NES};
+use crate::{cartridge::Cartridge, cpu::trace::Trace, nes::Nes};
 
 use super::tools::load_trace;
 
@@ -16,7 +16,7 @@ fn run_test_suite(cartridge_file: &str, log_file: &str, start_at: Option<u16>) {
     log_file_path.push(log_file);
     let expected = load_trace(log_file_path).unwrap();
     let cartridge = Cartridge::from_file(cartridge_file_path).unwrap();
-    let mut nes = NES::new(None, None);
+    let mut nes = Nes::new(None, None);
     nes.insert(cartridge);
     nes.reset();
     if let Some(start_at) = start_at {
@@ -57,7 +57,7 @@ fn test_run() {
         mapper: 0,
         screen_mirroring: crate::cartridge::Mirroring::Vertical,
     };
-    let mut nes = NES::new(None, None);
+    let mut nes = Nes::new(None, None);
     nes.insert(cartridge);
     nes.reset();
     let mut inst_count = 0;

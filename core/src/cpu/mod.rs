@@ -2,7 +2,7 @@ use bitflags::bitflags;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    bus::cpu_bus::CPUBus,
+    bus::cpu_bus::CpuBus,
     memory::{page_cross, Memory},
 };
 
@@ -71,7 +71,7 @@ pub struct CPU {
     memory: [u8; 0xFFFF],
     /// Remaining cycles count before moving to the next instruction.
     remaining_cycles: u8,
-    bus: Option<Rc<RefCell<CPUBus>>>,
+    bus: Option<Rc<RefCell<CpuBus>>>,
 }
 
 /// CPU Error.
@@ -99,7 +99,7 @@ impl CPU {
     }
 
     /// Connects CPU to bus.
-    pub fn connect_bus(&mut self, bus: &Rc<RefCell<CPUBus>>) {
+    pub fn connect_bus(&mut self, bus: &Rc<RefCell<CpuBus>>) {
         self.bus = Some(Rc::clone(bus));
     }
 

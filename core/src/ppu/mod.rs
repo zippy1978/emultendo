@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::bus::ppu_bus::PPUBus;
+use crate::bus::ppu_bus::PpuBus;
 
 use self::{
     addr_register::AddrRegister,
@@ -31,13 +31,13 @@ pub mod render;
 
 /// PPU Error.
 #[derive(Debug)]
-pub enum PPUError {
+pub enum PpuError {
     Unknown,
 }
 
 /// PPU.
 #[derive(Debug, Clone)]
-pub struct PPU {
+pub struct Ppu {
     addr: AddrRegister,
     ctrl: ControlRegister,
     mask: MaskRegister,
@@ -48,11 +48,11 @@ pub struct PPU {
     scanline: u16,
     cycle: usize,
     nmi_interrupt: bool,
-    bus: Option<Rc<RefCell<PPUBus>>>,
+    bus: Option<Rc<RefCell<PpuBus>>>,
     frame: Rc<RefCell<Frame>>,
 }
 
-impl PPU {
+impl Ppu {
     /// Creates a PPU instance.
     pub fn new() -> Self {
         Self {
@@ -83,7 +83,7 @@ impl PPU {
         &self.ctrl
     }
 
-    pub fn bus(&self) -> &Option<Rc<RefCell<PPUBus>>> {
+    pub fn bus(&self) -> &Option<Rc<RefCell<PpuBus>>> {
         &self.bus
     }
 
@@ -108,7 +108,7 @@ impl PPU {
     }
 
     /// Connects PPU to bus.
-    pub fn connect_bus(&mut self, bus: &Rc<RefCell<PPUBus>>) {
+    pub fn connect_bus(&mut self, bus: &Rc<RefCell<PpuBus>>) {
         self.bus = Some(Rc::clone(bus));
     }
 
@@ -199,7 +199,7 @@ impl PPU {
 
     /// Processes next cycle.
     /// Returns true when a full scanline is ready
-    pub fn tick(&mut self) -> Result<bool, PPUError> {
+    pub fn tick(&mut self) -> Result<bool, PpuError> {
         // Render background in sync
         if render_background_sync(self, &mut self.frame.borrow_mut()) {
             self.status.set_sprite_zero_hit(true);

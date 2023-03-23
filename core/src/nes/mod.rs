@@ -1,11 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    bus::{cpu_bus::CPUBus, ppu_bus::PPUBus},
+    bus::{cpu_bus::CpuBus, ppu_bus::PpuBus},
     cartridge::Cartridge,
     controller::Joypad,
     cpu::{CPUError, CPU},
-    ppu::{frame::Frame, PPUError, PPU},
+    ppu::{frame::Frame, PpuError, Ppu},
 };
 
 pub mod tools;
@@ -15,40 +15,40 @@ mod mod_tests;
 
 /// NES Error.
 #[derive(Debug)]
-pub enum NESError {
-    CPU(CPUError),
-    PPU(PPUError),
+pub enum NesError {
+    Cpu(CPUError),
+    Ppu(PpuError),
 }
 
-impl From<CPUError> for NESError {
+impl From<CPUError> for NesError {
     fn from(value: CPUError) -> Self {
-        Self::CPU(value)
+        Self::Cpu(value)
     }
 }
 
-impl From<PPUError> for NESError {
-    fn from(value: PPUError) -> Self {
-        Self::PPU(value)
+impl From<PpuError> for NesError {
+    fn from(value: PpuError) -> Self {
+        Self::Ppu(value)
     }
 }
 
 /// NES console.
-pub struct NES {
+pub struct Nes {
     cpu: CPU,
-    cpu_bus: Rc<RefCell<CPUBus>>,
-    ppu: Rc<RefCell<PPU>>,
-    ppu_bus: Rc<RefCell<PPUBus>>,
+    cpu_bus: Rc<RefCell<CpuBus>>,
+    ppu: Rc<RefCell<Ppu>>,
+    ppu_bus: Rc<RefCell<PpuBus>>,
     joypad1: Option<Rc<RefCell<Joypad>>>,
     joypad2: Option<Rc<RefCell<Joypad>>>,
 }
 
-impl NES {
+impl Nes {
     pub fn new(joypad1: Option<Joypad>, joypad2: Option<Joypad>) -> Self {
         let mut this = Self {
             cpu: CPU::new(),
-            cpu_bus: Rc::new(RefCell::new(CPUBus::new())),
-            ppu: Rc::new(RefCell::new(PPU::new())),
-            ppu_bus: Rc::new(RefCell::new(PPUBus::new())),
+            cpu_bus: Rc::new(RefCell::new(CpuBus::new())),
+            ppu: Rc::new(RefCell::new(Ppu::new())),
+            ppu_bus: Rc::new(RefCell::new(PpuBus::new())),
             joypad1: match joypad1 {
                 Some(j) => Some(Rc::new(RefCell::new(j))),
                 None => None,
@@ -94,7 +94,7 @@ impl NES {
         &mut self,
         mut cpu_callback: F1,
         mut ppu_callback: F2,
-    ) -> Result<(), NESError>
+    ) -> Result<(), NesError>
     where
         F1: FnMut(&mut CPU),
         F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,

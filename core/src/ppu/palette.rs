@@ -1,4 +1,4 @@
-use crate::bus::ppu_bus::PPUBus;
+use crate::bus::ppu_bus::PpuBus;
 
 pub static SYSTEM_PALETTE: [(u8, u8, u8); 64] = [
     (0x80, 0x80, 0x80),
@@ -68,7 +68,7 @@ pub static SYSTEM_PALETTE: [(u8, u8, u8); 64] = [
 ];
 
 pub(crate) fn bg_palette(
-    bus: &PPUBus,
+    bus: &PpuBus,
     attribute_table: &[u8],
     tile_column: usize,
     tile_row: usize,
@@ -93,7 +93,7 @@ pub(crate) fn bg_palette(
     ]
 }
 
-pub(crate) fn sprite_palette(bus: &PPUBus, pallete_idx: u8) -> [u8; 4] {
+pub(crate) fn sprite_palette(bus: &PpuBus, pallete_idx: u8) -> [u8; 4] {
     let start = 0x11 + (pallete_idx * 4) as usize;
     [
         0,

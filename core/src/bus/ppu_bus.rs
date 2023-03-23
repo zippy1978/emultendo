@@ -2,7 +2,7 @@ use crate::cartridge::{Cartridge, Mirroring};
 
 /// NES PPU connection bus.
 #[derive(Debug, Clone)]
-pub struct PPUBus {
+pub struct PpuBus {
     chr_rom: Vec<u8>,
     palette_table: [u8; 32],
     vram: [u8; 2048],
@@ -10,7 +10,7 @@ pub struct PPUBus {
     internal_data_buf: u8,
 }
 
-impl PPUBus {
+impl PpuBus {
     /// Creates a bus.
     pub fn new() -> Self {
         Self {

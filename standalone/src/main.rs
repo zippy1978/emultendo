@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use emultendo_core::{
     cartridge::Cartridge,
     controller::{Joypad, JoypadButton},
-    nes::NES,
+    nes::Nes,
     ppu::frame::Frame,
 };
 
-use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
+use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum, video::GLProfile};
 
 fn main() {
     // Pixel scale
@@ -24,10 +24,15 @@ fn main() {
     key_map.insert(Keycode::A, JoypadButton::BUTTON_A);
     key_map.insert(Keycode::S, JoypadButton::BUTTON_B);
 
-    // Create window
-    // with a x3 scale
+    // Init SDL
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+    let gl_attr = video_subsystem.gl_attr();
+    gl_attr.set_context_version(3, 3);
+    gl_attr.set_context_profile(GLProfile::Core);
+
+    // Create main window
+    // with a x3 scale
     let window = video_subsystem
         .window(
             "Emultendo",
@@ -38,7 +43,7 @@ fn main() {
         .build()
         .unwrap();
 
-    // Create canvas for frame rendering
+    // Create canvas for frame rendering in main window
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     canvas.set_scale(pixel_scale, pixel_scale).unwrap();
     let creator = canvas.texture_creator();
@@ -59,7 +64,7 @@ fn main() {
     loop {
         // Create console
         // plug only joypad1, other Super Mario does not work
-        let mut nes = NES::new(Some(Joypad::new()), None);
+        let mut nes = Nes::new(Some(Joypad::new()), None);
 
         // Load game to cartridge (if game file)
         // then insert cartridge and reset

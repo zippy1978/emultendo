@@ -1,4 +1,4 @@
-use crate::{bus::ppu_bus::PPUBus, cartridge::Mirroring, ppu::PPU};
+use crate::{bus::ppu_bus::PpuBus, cartridge::Mirroring, ppu::Ppu};
 
 use super::{
     frame::Frame,
@@ -8,8 +8,8 @@ use super::{
 };
 
 fn render_name_table_sync(
-    ppu: &PPU,
-    bus: &PPUBus,
+    ppu: &Ppu,
+    bus: &PpuBus,
     frame: &mut Frame,
     name_table: &[u8],
     view_port: Rect,
@@ -87,7 +87,7 @@ fn render_name_table_sync(
     sprite_zero_hit
 }
 
-fn sprite_zero_hit_at(ppu: &PPU, bus: &PPUBus, test_x: usize, test_y: usize) -> bool {
+fn sprite_zero_hit_at(ppu: &Ppu, bus: &PpuBus, test_x: usize, test_y: usize) -> bool {
     // No hit if sprites are not visible
     let sprites_visible =
         ppu.mask.show_sprites() && (ppu.mask.leftmost_8pxl_sprite() || test_x >= 8);
@@ -130,7 +130,7 @@ fn sprite_zero_hit_at(ppu: &PPU, bus: &PPUBus, test_x: usize, test_y: usize) -> 
     false
 }
 
-pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
+pub(crate) fn render_background_sync(ppu: &Ppu, frame: &mut Frame) -> bool {
     let bus = match &ppu.bus {
         Some(b) => b.borrow_mut(),
         None => panic!("PPU is not connected to bus"),
@@ -216,7 +216,7 @@ pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
     sprite_zero_hit
 }
 
-pub(crate) fn render_sprites(ppu: &PPU, frame: &mut Frame) {
+pub(crate) fn render_sprites(ppu: &Ppu, frame: &mut Frame) {
     let bus = match &ppu.bus {
         Some(b) => b.borrow_mut(),
         None => panic!("PPU is not connected to bus"),

@@ -1,8 +1,8 @@
-use crate::{bus::cpu_bus::CPUBus, cartridge::Cartridge, memory::Memory};
+use crate::{bus::cpu_bus::CpuBus, cartridge::Cartridge, memory::Memory};
 
 #[test]
 fn test_ram_read_write() {
-    let mut bus = CPUBus::new();
+    let mut bus = CpuBus::new();
     bus.mem_write(0x0001, 0x01);
     assert_eq!(bus.mem_read(0x0001), 0x01);
     bus.mem_write_u16(0x0200, 0x01);
@@ -11,7 +11,7 @@ fn test_ram_read_write() {
 
 #[test]
 fn test_prg_rom_read() {
-    let mut bus = CPUBus::new();
+    let mut bus = CpuBus::new();
     let cartridge = Cartridge {
         prg_rom: vec![0xd8, 0x00],
         chr_rom: vec![],
@@ -25,7 +25,7 @@ fn test_prg_rom_read() {
 #[test]
 #[should_panic]
 fn test_prg_rom_not_writable() {
-    let mut bus = CPUBus::new();
+    let mut bus = CpuBus::new();
     bus.mem_write_u16(0x8000, 0x001);
     assert_eq!(bus.mem_read_u16(0x8000), 0);
 }
