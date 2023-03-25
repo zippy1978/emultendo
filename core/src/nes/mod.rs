@@ -1,11 +1,17 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    time::{Duration, SystemTimeError},
+};
+
+use spin_sleep::LoopHelper;
 
 use crate::{
     bus::{cpu_bus::CpuBus, ppu_bus::PpuBus},
     cartridge::Cartridge,
     controller::Joypad,
-    cpu::{CpuError, Cpu},
-    ppu::{frame::Frame, PpuError, Ppu},
+    cpu::{Cpu, CpuError},
+    ppu::{frame::Frame, Ppu, PpuError},
 };
 
 pub mod tools;
@@ -13,11 +19,15 @@ pub mod tools;
 #[cfg(test)]
 mod mod_tests;
 
+// Source: https://www.nesdev.org/wiki/Cycle_reference_chart
+pub const CPU_MHZ: f32 = 1.789773;
+
 /// NES Error.
 #[derive(Debug)]
 pub enum NesError {
     Cpu(CpuError),
     Ppu(PpuError),
+    Clock(String),
 }
 
 impl From<CpuError> for NesError {
@@ -32,10 +42,17 @@ impl From<PpuError> for NesError {
     }
 }
 
+impl From<SystemTimeError> for NesError {
+    fn from(value: SystemTimeError) -> Self {
+        Self::Clock(value.to_string())
+    }
+}
+
 /// NES console.
 pub struct Nes {
     cpu: Cpu,
     cpu_bus: Rc<RefCell<CpuBus>>,
+    cpu_mhz: f32,
     ppu: Rc<RefCell<Ppu>>,
     ppu_bus: Rc<RefCell<PpuBus>>,
     joypad1: Option<Rc<RefCell<Joypad>>>,
@@ -47,6 +64,7 @@ impl Nes {
         let mut this = Self {
             cpu: Cpu::new(),
             cpu_bus: Rc::new(RefCell::new(CpuBus::new())),
+            cpu_mhz: CPU_MHZ,
             ppu: Rc::new(RefCell::new(Ppu::new())),
             ppu_bus: Rc::new(RefCell::new(PpuBus::new())),
             joypad1: match joypad1 {
@@ -76,6 +94,14 @@ impl Nes {
         this
     }
 
+    pub fn set_cpu_mhz(&mut self, mhz: f32) {
+        self.cpu_mhz = mhz;
+    }
+
+    pub fn cpu_mhz(&self) -> f32 {
+        self.cpu_mhz
+    }
+
     pub fn insert(&mut self, cartridge: Cartridge) {
         self.cpu_bus.borrow_mut().connect_cartridge(&cartridge);
         self.ppu_bus.borrow_mut().connect_cartridge(&cartridge);
@@ -96,21 +122,28 @@ impl Nes {
         mut ppu_callback: F2,
     ) -> Result<(), NesError>
     where
-        F1: FnMut(&mut Cpu),
+        F1: FnMut(&mut Cpu) -> bool,
         F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,
     {
         let mut cont = true;
 
+        let mut loop_helper = LoopHelper::builder().build_without_target_rate();
+
         while cont {
             if self.ppu_bus.borrow_mut().cartridge_connected() {
+                let delta = loop_helper.loop_start();
+
+                let cycle_duration =
+                    Duration::from_nanos(1_000_000_000 / (self.cpu_mhz * 1_000_000.0) as u64);
+
                 let nmi_before = self.ppu.borrow_mut().nmi_interrupt();
 
                 // CPU callback is called only on instruction change
                 // Not for every cycle
                 if self.cpu.instruction_changed() {
-                    cpu_callback(&mut self.cpu);
+                    cont = cont && cpu_callback(&mut self.cpu);
                 }
-                cont = self.cpu.tick()?;
+                cont = cont && self.cpu.tick()?;
 
                 // PPU runs 3x faster than CPU
                 for _ in 0..3 {
@@ -120,17 +153,25 @@ impl Nes {
                 let nmi_after = self.ppu.borrow_mut().nmi_interrupt();
 
                 if !nmi_before && nmi_after {
-                    cont = ppu_callback(
-                        &self.ppu.borrow_mut().frame().borrow(),
-                        match &mut self.joypad1 {
-                            Some(j) => Some(j),
-                            None => None,
-                        },
-                        match &mut self.joypad2 {
-                            Some(j) => Some(j),
-                            None => None,
-                        },
-                    );
+                    // TODO: handle frame drop ?
+                    cont = cont
+                        && ppu_callback(
+                            &self.ppu.borrow_mut().frame().borrow(),
+                            match &mut self.joypad1 {
+                                Some(j) => Some(j),
+                                None => None,
+                            },
+                            match &mut self.joypad2 {
+                                Some(j) => Some(j),
+                                None => None,
+                            },
+                        );
+                }
+
+                // Wait for cycle duration end
+                // DO NOT use a thread::sleep : not accurate enough !
+                if let Some(wait) = cycle_duration.checked_sub(delta) {
+                    spin_sleep::sleep(wait);
                 }
             } else {
                 cont = ppu_callback(

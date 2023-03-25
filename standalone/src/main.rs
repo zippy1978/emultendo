@@ -76,7 +76,7 @@ fn main() {
 
         // Run
         nes.run(
-            |_| {},
+            |_| {true},
             |frame, joypad1, _| {
                 // Update canvas with frame
                 texture.update(None, &frame.data(), 256 * 3).unwrap();

@@ -33,6 +33,7 @@ fn run_test_suite(cartridge_file: &str, log_file: &str, start_at: Option<u16>) {
             expected[counter - 1].split(" PPU").collect::<Vec<&str>>()[0]
         );
         counter += 1;
+        true
     }, |_ ,_, _| {true})
     .unwrap();
 }
@@ -63,6 +64,7 @@ fn test_run() {
     let mut inst_count = 0;
     nes.run(|_| {
         inst_count += 1;
+        true
     }, |_,_, _| {true})
     .unwrap();
     assert_eq!(inst_count, 3)

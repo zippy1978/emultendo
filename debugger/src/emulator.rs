@@ -7,7 +7,7 @@ use emultendo_core::{
     cartridge::Cartridge,
     controller::{Joypad, JoypadButton},
     cpu::{Cpu, CpuFlags},
-    nes::Nes,
+    nes::{Nes, CPU_MHZ},
     ppu::frame::Frame,
 };
 
@@ -77,6 +77,7 @@ pub struct EmulatorState {
     pub frame: Frame,
     pub cpu: CpuState,
     pub joypad1: JoypadState,
+    pub cpu_mhz: f32,
 }
 
 impl EmulatorState {
@@ -85,6 +86,7 @@ impl EmulatorState {
             frame: Frame::new(),
             cpu: CpuState::new(),
             joypad1: JoypadState::new(),
+            cpu_mhz: CPU_MHZ,
         }
     }
 }
@@ -112,49 +114,66 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
         }
 
         // Run
-        nes.run(
-            |cpu| {
-                let mut state_lock = state.write().unwrap();
-                
-                // Update CPU state
-                state_lock.cpu = CpuState::from_cpu(cpu);
-            },
-            |frame, joypad1, _joypad2| {
-                let mut state_lock = state.write().unwrap();
-                
-                // Update frame in state
-                state_lock.frame = frame.clone();
+        loop {
+            nes.set_cpu_mhz(state.read().unwrap().cpu_mhz);
+            let initial_cpu_mhz = nes.cpu_mhz();
+            nes.run(
+                |cpu| {
+                    let mut state_lock = state.write().unwrap();
 
-                // Update Joypad from state
-                if let Some(joypad1) = &joypad1 {
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::BUTTON_A, state_lock.joypad1.a);
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::BUTTON_B, state_lock.joypad1.b);
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::UP, state_lock.joypad1.up);
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::DOWN, state_lock.joypad1.down);
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::LEFT, state_lock.joypad1.left);
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::RIGHT, state_lock.joypad1.right);
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::START, state_lock.joypad1.start);
-                    joypad1
-                        .borrow_mut()
-                        .set_button_pressed_status(JoypadButton::SELECT, state_lock.joypad1.select);
-                }
+                    // Update CPU state
+                    state_lock.cpu = CpuState::from_cpu(cpu);
 
-                true
-            },
-        )
+                    // If CPU Mhz changed: restart run loop
+                    if state_lock.cpu_mhz != initial_cpu_mhz {
+                        return false;
+                    }
+
+                    true
+                },
+                |frame, joypad1, _joypad2| {
+                    let mut state_lock = state.write().unwrap();
+
+                    // Update frame in state
+                    state_lock.frame = frame.clone();
+
+                    // Update Joypad from state
+                    if let Some(joypad1) = &joypad1 {
+                        joypad1.borrow_mut().set_button_pressed_status(
+                            JoypadButton::BUTTON_A,
+                            state_lock.joypad1.a,
+                        );
+                        joypad1.borrow_mut().set_button_pressed_status(
+                            JoypadButton::BUTTON_B,
+                            state_lock.joypad1.b,
+                        );
+                        joypad1
+                            .borrow_mut()
+                            .set_button_pressed_status(JoypadButton::UP, state_lock.joypad1.up);
+                        joypad1
+                            .borrow_mut()
+                            .set_button_pressed_status(JoypadButton::DOWN, state_lock.joypad1.down);
+                        joypad1
+                            .borrow_mut()
+                            .set_button_pressed_status(JoypadButton::LEFT, state_lock.joypad1.left);
+                        joypad1.borrow_mut().set_button_pressed_status(
+                            JoypadButton::RIGHT,
+                            state_lock.joypad1.right,
+                        );
+                        joypad1.borrow_mut().set_button_pressed_status(
+                            JoypadButton::START,
+                            state_lock.joypad1.start,
+                        );
+                        joypad1.borrow_mut().set_button_pressed_status(
+                            JoypadButton::SELECT,
+                            state_lock.joypad1.select,
+                        );
+                    }
+
+                    true
+                },
+            )
+            .unwrap();
+        }
     });
 }
