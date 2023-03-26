@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use emulator::{start_emulator, EmulatorState};
 use glium::backend::Facade;
 use renderable::Renderable;
-use ui::{display_window::DisplayWindow, cpu_window::CpuWindow, control_window::ControlWindow};
+use ui::{display::DisplayWindow, cpu::CpuWindow, cartridge::CartridgeWindow};
 
 mod emulator;
 mod renderable;
@@ -28,8 +28,8 @@ fn main() {
     // CPU window
     let cpu_window = CpuWindow::new(20.0, 580.0);
 
-    // Control window
-    let control_window = ControlWindow::new(350.0, 580.0);
+    // Cartridge window
+    let control_window = CartridgeWindow::new(350.0, 580.0);
 
     // Main loop
     system.main_loop(move |_, ui, renderer, _display| {

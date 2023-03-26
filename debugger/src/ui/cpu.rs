@@ -64,7 +64,7 @@ impl Renderable for CpuWindow {
 
                 ui.separator();
 
-                ui.slider_config("Frequency", 1.0, 25.0).display_format("%.02fMhz").build(&mut state_lock.cpu_mhz);
+                ui.slider_config("Clock", 0.1, 10.0).display_format("%.02fMhz").build(&mut state_lock.cpu_mhz);
             });
     }
 }

@@ -1,4 +1,5 @@
 use std::{
+    rc::Rc,
     sync::{Arc, RwLock},
     thread,
 };
@@ -72,11 +73,27 @@ impl CpuState {
     }
 }
 
+/// Cartridge state.
+#[derive(PartialEq, Eq, Clone)]
+pub struct CartridgeState {
+    pub filename: String,
+}
+
+impl CartridgeState {
+    pub fn new(filename: &str) -> Self {
+        Self {
+            filename: filename.to_string(),
+        }
+    }
+}
+
 /// Emulator state.
 pub struct EmulatorState {
     pub frame: Frame,
     pub cpu: CpuState,
     pub joypad1: JoypadState,
+    pub cartridge: Option<CartridgeState>,
+    pub cartridge_changed: bool,
     pub cpu_mhz: f32,
 }
 
@@ -86,6 +103,8 @@ impl EmulatorState {
             frame: Frame::new(),
             cpu: CpuState::new(),
             joypad1: JoypadState::new(),
+            cartridge: None,
+            cartridge_changed: false,
             cpu_mhz: CPU_MHZ,
         }
     }
@@ -97,83 +116,99 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
 
     // Run emulator in dedicated thread
     thread::spawn(move || {
-        //let current_frame = &current_frame.clone();
-        let game_filename = Some(Box::new("../games/smario.nes".to_string()));
-        //let game_filename: Option<Box<String>> = None;
-
         // Create console
         // plug only joypad1, other Super Mario does not work
         let mut nes = Nes::new(Some(Joypad::new()), None);
 
-        // Load game to cartridge (if game file)
-        // then insert cartridge and reset
-        if let Some(game_filename) = &game_filename {
-            let cartridge = Cartridge::from_file(game_filename.as_ref()).unwrap();
-            nes.insert(cartridge);
-            nes.reset();
+        // Initial cartridge insertion detection
+        while state.read().unwrap().cartridge.is_none() {
+            if state.read().unwrap().cartridge.is_some() {
+                state.write().unwrap().cartridge_changed = true;
+            }
         }
 
         // Run
         loop {
             nes.set_cpu_mhz(state.read().unwrap().cpu_mhz);
             let initial_cpu_mhz = nes.cpu_mhz();
-            nes.run(
-                |cpu| {
-                    let mut state_lock = state.write().unwrap();
+            let initial_cartridge_state = Rc::new(state.read().unwrap().cartridge.clone());
 
-                    // Update CPU state
-                    state_lock.cpu = CpuState::from_cpu(cpu);
+            if let Some(cartridge_state) = initial_cartridge_state.as_ref() {
+                // If cartridge was changed...
+                // load game to cartridge (if one in state)
+                // then insert cartridge and reset
+                if state.read().unwrap().cartridge_changed {
+                    nes.insert(Cartridge::from_file(&cartridge_state.filename).unwrap());
+                    nes.reset();
+                    state.write().unwrap().cartridge_changed = false;
+                }
 
-                    // If CPU Mhz changed: restart run loop
-                    if state_lock.cpu_mhz != initial_cpu_mhz {
-                        return false;
-                    }
+                nes.run(
+                    |cpu| {
+                        let mut state_lock = state.write().unwrap();
 
-                    true
-                },
-                |frame, joypad1, _joypad2| {
-                    let mut state_lock = state.write().unwrap();
+                        // Update CPU state
+                        state_lock.cpu = CpuState::from_cpu(cpu);
 
-                    // Update frame in state
-                    state_lock.frame = frame.clone();
+                        // If CPU Mhz changed: restart run loop
+                        if state_lock.cpu_mhz != initial_cpu_mhz {
+                            return false;
+                        }
 
-                    // Update Joypad from state
-                    if let Some(joypad1) = &joypad1 {
-                        joypad1.borrow_mut().set_button_pressed_status(
-                            JoypadButton::BUTTON_A,
-                            state_lock.joypad1.a,
-                        );
-                        joypad1.borrow_mut().set_button_pressed_status(
-                            JoypadButton::BUTTON_B,
-                            state_lock.joypad1.b,
-                        );
-                        joypad1
-                            .borrow_mut()
-                            .set_button_pressed_status(JoypadButton::UP, state_lock.joypad1.up);
-                        joypad1
-                            .borrow_mut()
-                            .set_button_pressed_status(JoypadButton::DOWN, state_lock.joypad1.down);
-                        joypad1
-                            .borrow_mut()
-                            .set_button_pressed_status(JoypadButton::LEFT, state_lock.joypad1.left);
-                        joypad1.borrow_mut().set_button_pressed_status(
-                            JoypadButton::RIGHT,
-                            state_lock.joypad1.right,
-                        );
-                        joypad1.borrow_mut().set_button_pressed_status(
-                            JoypadButton::START,
-                            state_lock.joypad1.start,
-                        );
-                        joypad1.borrow_mut().set_button_pressed_status(
-                            JoypadButton::SELECT,
-                            state_lock.joypad1.select,
-                        );
-                    }
+                        // Cartridge load/change
+                        if &state_lock.cartridge != initial_cartridge_state.as_ref() {
+                            state_lock.cartridge_changed = true;
+                            return false;
+                        }
 
-                    true
-                },
-            )
-            .unwrap();
+                        true
+                    },
+                    |frame, joypad1, _joypad2| {
+                        let mut state_lock = state.write().unwrap();
+
+                        // Update frame in state
+                        state_lock.frame = frame.clone();
+
+                        // Update Joypad from state
+                        if let Some(joypad1) = &joypad1 {
+                            joypad1.borrow_mut().set_button_pressed_status(
+                                JoypadButton::BUTTON_A,
+                                state_lock.joypad1.a,
+                            );
+                            joypad1.borrow_mut().set_button_pressed_status(
+                                JoypadButton::BUTTON_B,
+                                state_lock.joypad1.b,
+                            );
+                            joypad1
+                                .borrow_mut()
+                                .set_button_pressed_status(JoypadButton::UP, state_lock.joypad1.up);
+                            joypad1.borrow_mut().set_button_pressed_status(
+                                JoypadButton::DOWN,
+                                state_lock.joypad1.down,
+                            );
+                            joypad1.borrow_mut().set_button_pressed_status(
+                                JoypadButton::LEFT,
+                                state_lock.joypad1.left,
+                            );
+                            joypad1.borrow_mut().set_button_pressed_status(
+                                JoypadButton::RIGHT,
+                                state_lock.joypad1.right,
+                            );
+                            joypad1.borrow_mut().set_button_pressed_status(
+                                JoypadButton::START,
+                                state_lock.joypad1.start,
+                            );
+                            joypad1.borrow_mut().set_button_pressed_status(
+                                JoypadButton::SELECT,
+                                state_lock.joypad1.select,
+                            );
+                        }
+
+                        true
+                    },
+                )
+                .unwrap();
+            }
         }
     });
 }
