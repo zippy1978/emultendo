@@ -4,111 +4,14 @@ use std::{
     thread,
 };
 
+use self::state::{CpuState, EmulatorState};
 use emultendo_core::{
     cartridge::Cartridge,
     controller::{Joypad, JoypadButton},
-    cpu::{Cpu, CpuFlags},
-    nes::{Nes, CPU_MHZ},
-    ppu::frame::Frame,
+    nes::Nes,
 };
 
-/// Joypad state.
-pub struct JoypadState {
-    pub up: bool,
-    pub down: bool,
-    pub left: bool,
-    pub right: bool,
-    pub a: bool,
-    pub b: bool,
-    pub start: bool,
-    pub select: bool,
-}
-
-impl JoypadState {
-    pub fn new() -> Self {
-        Self {
-            up: false,
-            down: false,
-            left: false,
-            right: false,
-            a: false,
-            b: false,
-            start: false,
-            select: false,
-        }
-    }
-}
-
-/// CPU state.
-pub struct CpuState {
-    pub register_a: u8,
-    pub register_x: u8,
-    pub register_y: u8,
-    pub status: CpuFlags,
-    pub program_counter: u16,
-    pub stack_pointer: u8,
-}
-
-impl CpuState {
-    fn new() -> Self {
-        Self {
-            register_a: 0,
-            register_x: 0,
-            register_y: 0,
-            status: CpuFlags::from_bits_truncate(0b100100),
-            program_counter: 0,
-            stack_pointer: 0,
-        }
-    }
-
-    fn from_cpu(cpu: &Cpu) -> Self {
-        Self {
-            register_a: cpu.register_a(),
-            register_x: cpu.register_x(),
-            register_y: cpu.register_y(),
-            status: cpu.status(),
-            program_counter: cpu.program_counter(),
-            stack_pointer: cpu.stack_pointer(),
-        }
-    }
-}
-
-/// Cartridge state.
-#[derive(PartialEq, Eq, Clone)]
-pub struct CartridgeState {
-    pub filename: String,
-}
-
-impl CartridgeState {
-    pub fn new(filename: &str) -> Self {
-        Self {
-            filename: filename.to_string(),
-        }
-    }
-}
-
-/// Emulator state.
-pub struct EmulatorState {
-    pub frame: Frame,
-    pub cpu: CpuState,
-    pub joypad1: JoypadState,
-    pub cartridge: Option<CartridgeState>,
-    pub cartridge_changed: bool,
-    pub cpu_mhz: f32,
-}
-
-impl EmulatorState {
-    pub fn new() -> Self {
-        Self {
-            frame: Frame::new(),
-            cpu: CpuState::new(),
-            joypad1: JoypadState::new(),
-            cartridge: None,
-            cartridge_changed: false,
-            cpu_mhz: CPU_MHZ,
-        }
-    }
-}
+pub mod state;
 
 /// Starts NES emulator in its own thread
 pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
@@ -117,13 +20,13 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
     // Run emulator in dedicated thread
     thread::spawn(move || {
         // Create console
-        // plug only joypad1, other Super Mario does not work
+        // plug only joypad1, otherwise Super Mario does not work
         let mut nes = Nes::new(Some(Joypad::new()), None);
 
         // Initial cartridge insertion detection
         while state.read().unwrap().cartridge.is_none() {
             if state.read().unwrap().cartridge.is_some() {
-                state.write().unwrap().cartridge_changed = true;
+                state.write().unwrap().reset = true;
             }
         }
 
@@ -134,13 +37,11 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
             let initial_cartridge_state = Rc::new(state.read().unwrap().cartridge.clone());
 
             if let Some(cartridge_state) = initial_cartridge_state.as_ref() {
-                // If cartridge was changed...
-                // load game to cartridge (if one in state)
-                // then insert cartridge and reset
-                if state.read().unwrap().cartridge_changed {
+                // Handle request
+                if state.read().unwrap().reset {
                     nes.insert(Cartridge::from_file(&cartridge_state.filename).unwrap());
                     nes.reset();
-                    state.write().unwrap().cartridge_changed = false;
+                    state.write().unwrap().reset = false;
                 }
 
                 nes.run(
@@ -155,9 +56,8 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
                             return false;
                         }
 
-                        // Cartridge load/change
-                        if &state_lock.cartridge != initial_cartridge_state.as_ref() {
-                            state_lock.cartridge_changed = true;
+                        // Reset requested
+                        if state_lock.reset {
                             return false;
                         }
 

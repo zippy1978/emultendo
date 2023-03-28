@@ -4,10 +4,7 @@ use imgui::{Condition, Textures, Ui};
 use imgui_glium_renderer::Texture;
 use native_dialog::FileDialog;
 
-use crate::{
-    emulator::{CartridgeState, EmulatorState},
-    renderable::Renderable,
-};
+use crate::{emulator::state::EmulatorState, renderable::Renderable};
 
 pub struct CartridgeWindow {
     start_pos: [f32; 2],
@@ -29,12 +26,11 @@ impl Renderable for CartridgeWindow {
         ui.window("Cartridge")
             .resizable(false)
             .position(self.start_pos, Condition::FirstUseEver)
-            .content_size([200.0, 80.0])
             .build(|| {
                 let mut state_lock = state.write().unwrap();
 
                 match &state_lock.cartridge {
-                    Some(c) => ui.text_wrapped(format!("File: {}", c.filename)),
+                    Some(c) => ui.text_wrapped(&c.filename),
                     None => ui.text_wrapped("No cartridge. Load one from a file."),
                 };
 
@@ -46,8 +42,7 @@ impl Renderable for CartridgeWindow {
                         .unwrap();
 
                     if let Some(path) = path {
-                        state_lock.cartridge =
-                            Some(CartridgeState::new(&path.as_os_str().to_str().unwrap()));
+                        state_lock.change_cartridge(path);
                     }
                 }
             });

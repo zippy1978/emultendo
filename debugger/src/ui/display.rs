@@ -10,7 +10,7 @@ use glium::{
 use imgui::{Condition, Image, Key, TextureId, Textures, Ui};
 use imgui_glium_renderer::Texture;
 
-use crate::renderable::Renderable;
+use crate::{emulator::state::EmulatorState, renderable::Renderable};
 
 /// Renders NES display window.
 pub struct DisplayWindow {
@@ -66,7 +66,7 @@ impl Renderable for DisplayWindow {
         &self,
         ui: &Ui,
         textures: &Textures<Texture>,
-        state: &mut Arc<std::sync::RwLock<crate::emulator::EmulatorState>>,
+        state: &mut Arc<std::sync::RwLock<EmulatorState>>,
     ) {
         // Update texture with frame
         let raw = RawImage2d {
@@ -92,13 +92,9 @@ impl Renderable for DisplayWindow {
         ui.window("Display")
             .resizable(false)
             .position(self.start_pos, Condition::FirstUseEver)
-            .content_size([
-                Frame::WIDTH as f32 * Self::PIXEL_SCALE,
-                Frame::HEIGHT as f32 * Self::PIXEL_SCALE,
-            ])
             .build(|| {
                 let mut state_lock = state.write().unwrap();
-                
+
                 // Update joypad state
                 state_lock.joypad1.start = ui.is_key_down(Key::Enter);
                 state_lock.joypad1.select = ui.is_key_down(Key::Space);
