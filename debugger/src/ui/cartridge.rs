@@ -30,13 +30,21 @@ impl Renderable for CartridgeWindow {
                 let mut state_lock = state.write().unwrap();
 
                 match &state_lock.cartridge {
-                    Some(c) => ui.text_wrapped(&c.filename),
-                    None => ui.text_wrapped("No cartridge. Load one from a file."),
+                    Some(c) => {
+                        let label = if c.filename.len() < 30 {
+                            c.filename.clone()
+                        } else {
+                            format!("...{}", c.filename.clone().split_off(25))
+                        };
+                        ui.text(label);
+                    }
+                    None => ui.text("No cartridge. Load one from a file."),
                 };
 
-                if ui.button("Load") {
+                ui.separator();
+
+                if ui.button("Load###Load") {
                     let path = FileDialog::new()
-                        //.set_location("~/Desktop")
                         .add_filter("iNES 1.0 Game", &["nes"])
                         .show_open_single_file()
                         .unwrap();

@@ -85,6 +85,7 @@ pub struct EmulatorState {
     pub joypad1: JoypadState,
     pub cartridge: Option<CartridgeState>,
     pub reset: bool,
+    pub paused: bool,
     pub cpu_mhz: f32,
 }
 
@@ -96,6 +97,7 @@ impl EmulatorState {
             joypad1: JoypadState::new(),
             cartridge: None,
             reset: false,
+            paused: false,
             cpu_mhz: CPU_MHZ,
         }
     }

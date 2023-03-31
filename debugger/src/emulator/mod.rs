@@ -1,7 +1,7 @@
 use std::{
     rc::Rc,
     sync::{Arc, RwLock},
-    thread,
+    thread, time::Duration,
 };
 
 use self::state::{CpuState, EmulatorState};
@@ -36,6 +36,11 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
             let initial_cpu_mhz = nes.cpu_mhz();
             let initial_cartridge_state = Rc::new(state.read().unwrap().cartridge.clone());
 
+            // Paused
+            while state.read().unwrap().paused {
+                thread::sleep(Duration::from_millis(10));
+            }
+
             if let Some(cartridge_state) = initial_cartridge_state.as_ref() {
                 // Handle request
                 if state.read().unwrap().reset {
@@ -59,6 +64,11 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
                         // Reset requested
                         if state_lock.reset {
                             return false;
+                        }
+
+                        // Pause requested
+                        if state_lock.paused {
+                            return  false;
                         }
 
                         true
