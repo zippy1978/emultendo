@@ -5,7 +5,7 @@ const PRG_ROM_PAGE_SIZE: usize = 16384;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 
 /// Cartridge mirroring mode.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub enum Mirroring {
     Vertical,
     Horizontal,
@@ -68,6 +68,14 @@ impl Cartridge {
             mapper: mapper,
             screen_mirroring: screen_mirroring,
         })
+    }
+
+    pub fn chr_rom(&self) -> &Vec<u8> {
+        &self.chr_rom
+    }
+
+    pub fn screen_mirroring(&self) -> &Mirroring {
+        &self.screen_mirroring
     }
 
     /// Creates cartridge from file.

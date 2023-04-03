@@ -2,13 +2,16 @@ use std::sync::{Arc, RwLock};
 
 use emulator::{start_emulator, state::EmulatorState};
 use glium::backend::Facade;
-use renderable::Renderable;
-use ui::{display::DisplayWindow, cpu::CpuWindow, cartridge::CartridgeWindow, control::ControlWindow};
+use widget::Widget;
+use window::{
+    cartridge::CartridgeWindow, control::ControlWindow, cpu::CpuWindow, display::DisplayWindow,
+    ppu::PpuWindow,
+};
 
 mod emulator;
-mod renderable;
+mod widget;
 mod support;
-mod ui;
+mod window;
 
 fn main() {
     // Emulator state
@@ -17,7 +20,7 @@ fn main() {
     // Start emulator
     start_emulator(&state);
 
-    let mut system = support::init("Emultendo - debugger", 1024.0, 768.0);
+    let mut system = support::init("Emultendo - debugger", 1280.0, 768.0);
 
     // Display window
     let mut display_window = DisplayWindow::new(20.0, 40.0);
@@ -28,6 +31,12 @@ fn main() {
     // CPU window
     let cpu_window = CpuWindow::new(20.0, 580.0);
 
+    // PPU window
+    let mut ppu_window = PpuWindow::new(600.0, 40.0);
+    ppu_window
+        .register_textures(system.display.get_context(), system.renderer.textures())
+        .unwrap();
+
     // Cartridge window
     let cartridge_window = CartridgeWindow::new(350.0, 580.0);
 
@@ -37,6 +46,7 @@ fn main() {
     // Main loop
     system.main_loop(move |_, ui, renderer, _display| {
         cpu_window.render(ui, renderer.textures(), &mut state);
+        ppu_window.render(ui, renderer.textures(), &mut state);
         cartridge_window.render(ui, renderer.textures(), &mut state);
         control_window.render(ui, renderer.textures(), &mut state);
         display_window.render(ui, renderer.textures(), &mut state);

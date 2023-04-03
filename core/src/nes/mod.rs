@@ -123,7 +123,7 @@ impl Nes {
     ) -> Result<(), NesError>
     where
         F1: FnMut(&mut Cpu) -> bool,
-        F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,
+        F2: FnMut(&Ppu, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,
     {
         let mut cont = true;
 
@@ -153,10 +153,9 @@ impl Nes {
                 let nmi_after = self.ppu.borrow_mut().nmi_interrupt();
 
                 if !nmi_before && nmi_after {
-                    // TODO: handle frame drop ?
                     cont = cont
                         && ppu_callback(
-                            &self.ppu.borrow_mut().frame().borrow(),
+                            &self.ppu.borrow(),
                             match &mut self.joypad1 {
                                 Some(j) => Some(j),
                                 None => None,
@@ -175,7 +174,7 @@ impl Nes {
                 }
             } else {
                 cont = ppu_callback(
-                    &self.ppu.borrow_mut().frame().borrow(),
+                    &self.ppu.borrow(),
                     match &mut self.joypad1 {
                         Some(j) => Some(j),
                         None => None,

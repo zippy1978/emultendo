@@ -4,7 +4,7 @@ use imgui::{Condition, Textures, Ui};
 use imgui_glium_renderer::Texture;
 use native_dialog::FileDialog;
 
-use crate::{emulator::state::EmulatorState, renderable::Renderable};
+use crate::{emulator::state::EmulatorState, widget::Widget};
 
 pub struct CartridgeWindow {
     start_pos: [f32; 2],
@@ -16,7 +16,7 @@ impl CartridgeWindow {
     }
 }
 
-impl Renderable for CartridgeWindow {
+impl Widget for CartridgeWindow {
     fn render(
         &self,
         ui: &Ui,

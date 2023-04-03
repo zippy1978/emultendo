@@ -5,7 +5,7 @@ use imgui_glium_renderer::Texture;
 
 use crate::emulator::state::EmulatorState;
 
-/// Defines a renderable element.
-pub trait Renderable {
+/// Widget.
+pub trait Widget {
     fn render(&self, ui: &Ui, textures: &Textures<Texture>, state: &mut Arc<RwLock<EmulatorState>>);
 }

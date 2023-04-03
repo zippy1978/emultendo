@@ -1,6 +1,6 @@
 use imgui::Condition;
 
-use crate::{emulator::state::EmulatorState, renderable::Renderable};
+use crate::{emulator::state::EmulatorState, widget::Widget};
 
 pub struct ControlWindow {
     start_pos: [f32; 2],
@@ -12,7 +12,7 @@ impl ControlWindow {
     }
 }
 
-impl Renderable for ControlWindow {
+impl Widget for ControlWindow {
     fn render(
         &self,
         ui: &imgui::Ui,

@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use imgui::{Condition, Textures, Ui};
 use imgui_glium_renderer::Texture;
 
-use crate::{emulator::state::EmulatorState, renderable::Renderable};
+use crate::{emulator::state::EmulatorState, widget::Widget};
 
 pub struct CpuWindow {
     start_pos: [f32; 2],
@@ -15,7 +15,7 @@ impl CpuWindow {
     }
 }
 
-impl Renderable for CpuWindow {
+impl Widget for CpuWindow {
     fn render(
         &self,
         ui: &Ui,

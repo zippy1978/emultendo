@@ -4,7 +4,7 @@ use std::{
     thread, time::Duration,
 };
 
-use self::state::{CpuState, EmulatorState};
+use self::state::{CpuState, EmulatorState, PpuState};
 use emultendo_core::{
     cartridge::Cartridge,
     controller::{Joypad, JoypadButton},
@@ -73,11 +73,11 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
 
                         true
                     },
-                    |frame, joypad1, _joypad2| {
+                    |ppu, joypad1, _joypad2| {
                         let mut state_lock = state.write().unwrap();
 
                         // Update frame in state
-                        state_lock.frame = frame.clone();
+                        state_lock.ppu = PpuState::from_ppu(ppu);
 
                         // Update Joypad from state
                         if let Some(joypad1) = &joypad1 {

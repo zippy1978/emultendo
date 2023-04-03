@@ -10,7 +10,7 @@ use glium::{
 use imgui::{Condition, Image, Key, TextureId, Textures, Ui};
 use imgui_glium_renderer::Texture;
 
-use crate::{emulator::state::EmulatorState, renderable::Renderable};
+use crate::{emulator::state::EmulatorState, widget::Widget};
 
 /// Renders NES display window.
 pub struct DisplayWindow {
@@ -61,7 +61,7 @@ impl DisplayWindow {
     }
 }
 
-impl Renderable for DisplayWindow {
+impl Widget for DisplayWindow {
     fn render(
         &self,
         ui: &Ui,
@@ -70,7 +70,7 @@ impl Renderable for DisplayWindow {
     ) {
         // Update texture with frame
         let raw = RawImage2d {
-            data: Cow::Owned(state.read().unwrap().frame.data().to_vec()),
+            data: Cow::Owned(state.read().unwrap().ppu.frame.data().to_vec()),
             width: Frame::WIDTH as u32,
             height: Frame::HEIGHT as u32,
             format: ClientFormat::U8U8U8,

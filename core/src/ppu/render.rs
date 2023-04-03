@@ -51,7 +51,7 @@ fn render_name_table_sync(
     let tile_idx = name_table[tile_addr as usize] as u16;
     let tile =
         &bus.chr_rom()[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
-    let palette = bg_palette(&bus, attribute_table, tile_column, tile_row);
+    let palette = bg_palette(&bus.palette_table(), attribute_table, tile_column, tile_row);
 
     // Determine tile matching pixel
     let tile_x = 7 - (cycles % 8);
@@ -231,7 +231,7 @@ pub(crate) fn render_sprites(ppu: &Ppu, frame: &mut Frame) {
         let flip_vertical = ppu.oam_data[i + 2] >> 7 & 1 == 1;
         let flip_horizontal = ppu.oam_data[i + 2] >> 6 & 1 == 1;
         let pallette_idx = ppu.oam_data[i + 2] & 0b11;
-        let sprite_palette = sprite_palette(&bus, pallette_idx);
+        let sprite_palette = sprite_palette(&bus.palette_table(), pallette_idx);
         let bank: u16 = ppu.ctrl.sprt_pattern_addr();
 
         let tile =

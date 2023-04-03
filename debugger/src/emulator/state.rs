@@ -1,7 +1,11 @@
 use std::path::PathBuf;
 
-use emultendo_core::{cpu::{CpuFlags, Cpu}, ppu::frame::Frame, nes::CPU_MHZ};
-
+use emultendo_core::{
+    cartridge::{Cartridge, Mirroring},
+    cpu::{Cpu, CpuFlags},
+    nes::CPU_MHZ,
+    ppu::{frame::Frame, Ppu},
+};
 
 /// Joypad state.
 pub struct JoypadState {
@@ -68,19 +72,74 @@ impl CpuState {
 #[derive(PartialEq, Eq, Clone)]
 pub struct CartridgeState {
     pub filename: String,
+    pub chr_rom: Vec<u8>,
+    pub screen_mirroring: Mirroring,
 }
 
 impl CartridgeState {
-    pub fn new(filename: &str) -> Self {
+    pub fn new(filename: &str, chr_rom: Vec<u8>, screen_mirroring: Mirroring) -> Self {
         Self {
             filename: filename.to_string(),
+            chr_rom,
+            screen_mirroring,
+        }
+    }
+}
+
+/// PPU State.
+pub struct PpuState {
+    pub frame: Frame,
+    pub vram: [u8; 2048],
+    pub palette_table: [u8; 32],
+    pub ctrl: PpuControlState,
+}
+
+impl PpuState {
+    pub fn new() -> Self {
+        Self {
+            frame: Frame::new(),
+            vram: [0; 2048],
+            palette_table: [0; 32],
+            ctrl: PpuControlState::new(),
+        }
+    }
+
+    pub fn from_ppu(ppu: &Ppu) -> Self {
+        Self {
+            frame: ppu.frame().borrow_mut().clone(),
+            vram: if let Some(bus) = &ppu.bus() {
+                bus.as_ref().borrow().vram().clone()
+            } else {
+                [0; 2048]
+            },
+            palette_table: if let Some(bus) = &ppu.bus() {
+                bus.as_ref().borrow().palette_table().clone()
+            } else {
+                [0; 32]
+            },
+            ctrl: PpuControlState {
+                bknd_pattern_addr: ppu.ctrl().bknd_pattern_addr(),
+            },
+        }
+    }
+}
+
+/// PPU Control state
+pub struct PpuControlState {
+    pub bknd_pattern_addr: u16,
+}
+
+impl PpuControlState {
+    pub fn new() -> Self {
+        Self {
+            bknd_pattern_addr: 0,
         }
     }
 }
 
 /// Emulator state.
 pub struct EmulatorState {
-    pub frame: Frame,
+    pub ppu: PpuState,
     pub cpu: CpuState,
     pub joypad1: JoypadState,
     pub cartridge: Option<CartridgeState>,
@@ -92,7 +151,7 @@ pub struct EmulatorState {
 impl EmulatorState {
     pub fn new() -> Self {
         Self {
-            frame: Frame::new(),
+            ppu: PpuState::new(),
             cpu: CpuState::new(),
             joypad1: JoypadState::new(),
             cartridge: None,
@@ -103,8 +162,12 @@ impl EmulatorState {
     }
 
     pub fn change_cartridge(&mut self, path: PathBuf) {
-        self.cartridge = Some(CartridgeState::new(&path.as_os_str().to_str().unwrap()));
+        let cartridge = Cartridge::from_file(&path).unwrap();
+        self.cartridge = Some(CartridgeState::new(
+            &path.as_os_str().to_str().unwrap(),
+            cartridge.chr_rom().clone(),
+            cartridge.screen_mirroring().clone(),
+        ));
         self.reset = true;
     }
-
 }
