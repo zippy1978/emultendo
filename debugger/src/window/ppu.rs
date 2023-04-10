@@ -123,31 +123,121 @@ impl PpuWindow {
         }
     }
 
-    fn render_name_tables(&self, state: &EmulatorState) -> Vec<RawImage2d<u8>> {
-        let mut result = vec![];
+    /// Renders scroll frame to texture.
+    fn render_scroll_frame(&self, state: &EmulatorState, textures: &Textures<Texture>) {
+        if let Some(texture_id) = self.texture_id {
+            let t = textures.get(texture_id).unwrap();
 
+            // Left
+            t.texture.write(
+                Rect {
+                    left: state.borrow().ppu.scroll.scroll_x as u32,
+                    bottom: state.borrow().ppu.scroll.scroll_y as u32,
+                    width: 1,
+                    height: Frame::HEIGHT as u32,
+                },
+                RawImage2d {
+                    data: Cow::Owned(vec![100 as u8; 1 * Frame::HEIGHT * 3]),
+                    width: 1,
+                    height: Frame::HEIGHT as u32,
+                    format: ClientFormat::U8U8U8,
+                },
+            );
+
+            // Right
+            t.texture.write(
+                Rect {
+                    left: state.borrow().ppu.scroll.scroll_x as u32 + Frame::WIDTH as u32,
+                    bottom: state.borrow().ppu.scroll.scroll_y as u32,
+                    width: 1,
+                    height: Frame::HEIGHT as u32,
+                },
+                RawImage2d {
+                    data: Cow::Owned(vec![100 as u8; 1 * Frame::HEIGHT * 3]),
+                    width: 1,
+                    height: Frame::HEIGHT as u32,
+                    format: ClientFormat::U8U8U8,
+                },
+            );
+
+            // Top
+            t.texture.write(
+                Rect {
+                    left: state.borrow().ppu.scroll.scroll_x as u32,
+                    bottom: state.borrow().ppu.scroll.scroll_y as u32,
+                    width: Frame::WIDTH as u32,
+                    height: 1,
+                },
+                RawImage2d {
+                    data: Cow::Owned(vec![100 as u8; Frame::WIDTH * 1 * 3]),
+                    width: Frame::WIDTH as u32,
+                    height: 1,
+                    format: ClientFormat::U8U8U8,
+                },
+            );
+
+            // Bottom
+            t.texture.write(
+                Rect {
+                    left: state.borrow().ppu.scroll.scroll_x as u32,
+                    bottom: state.borrow().ppu.scroll.scroll_y as u32 + Frame::HEIGHT as u32,
+                    width: Frame::WIDTH as u32,
+                    height: 1,
+                },
+                RawImage2d {
+                    data: Cow::Owned(vec![100 as u8; Frame::WIDTH * 1 * 3]),
+                    width: Frame::WIDTH as u32,
+                    height: 1,
+                    format: ClientFormat::U8U8U8,
+                },
+            );
+        }
+    }
+
+    /// Renders all table names to texture.
+    fn render_name_tables(&self, state: &EmulatorState, textures: &Textures<Texture>) {
         if let Some(cartridge) = &state.borrow().cartridge {
+            let mut name_tables_renderings = vec![];
             let vram = state.borrow().ppu.vram;
 
+            // Render order according to mirroring
             match cartridge.screen_mirroring {
                 emultendo_core::cartridge::Mirroring::Vertical => {
-                    result.push(self.render_name_table(&state, &vram[0..0x400]));
-                    result.push(self.render_name_table(&state, &vram[0x400..0x800]));
-                    result.push(self.render_name_table(&state, &vram[0..0x400]));
-                    result.push(self.render_name_table(&state, &vram[0x400..0x800]));
+                    name_tables_renderings.push(self.render_name_table(&state, &vram[0..0x400]));
+                    name_tables_renderings
+                        .push(self.render_name_table(&state, &vram[0x400..0x800]));
+                    name_tables_renderings.push(self.render_name_table(&state, &vram[0..0x400]));
+                    name_tables_renderings
+                        .push(self.render_name_table(&state, &vram[0x400..0x800]));
                 }
                 emultendo_core::cartridge::Mirroring::Horizontal => {
-                    result.push(self.render_name_table(&state, &vram[0..0x400]));
-                    result.push(self.render_name_table(&state, &vram[0..0x400]));
-                    result.push(self.render_name_table(&state, &vram[0x400..0x800]));
-                    result.push(self.render_name_table(&state, &vram[0x400..0x800]));
+                    name_tables_renderings.push(self.render_name_table(&state, &vram[0..0x400]));
+                    name_tables_renderings.push(self.render_name_table(&state, &vram[0..0x400]));
+                    name_tables_renderings
+                        .push(self.render_name_table(&state, &vram[0x400..0x800]));
+                    name_tables_renderings
+                        .push(self.render_name_table(&state, &vram[0x400..0x800]));
                 }
                 // Does nothing
                 emultendo_core::cartridge::Mirroring::FourScreen => (),
             };
-        }
 
-        result
+            // Write renderings to texture
+            if let Some(texture_id) = self.texture_id {
+                let t = textures.get(texture_id).unwrap();
+                for (i, raw) in name_tables_renderings.into_iter().enumerate() {
+                    t.texture.write(
+                        Rect {
+                            left: (i as u32 % 2) * raw.width,
+                            bottom: (i as u32 / 2) * raw.height,
+                            width: raw.width,
+                            height: raw.height,
+                        },
+                        raw,
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -158,21 +248,8 @@ impl Widget for PpuWindow {
         textures: &Textures<Texture>,
         state: &mut Arc<RwLock<EmulatorState>>,
     ) {
-        if let Some(texture_id) = self.texture_id {
-            let name_table_renderings = self.render_name_tables(&state.read().unwrap().borrow());
-            let t = textures.get(texture_id).unwrap();
-            for (i, raw) in name_table_renderings.into_iter().enumerate() {
-                t.texture.write(
-                    Rect {
-                        left: (i as u32 % 2) * raw.width,
-                        bottom: (i as u32 / 2) * raw.height,
-                        width: raw.width,
-                        height: raw.height,
-                    },
-                    raw,
-                );
-            }
-        }
+        self.render_name_tables(&state.read().unwrap(), textures);
+        self.render_scroll_frame(&state.read().unwrap(), textures);
 
         ui.window("PPU")
             .resizable(true)

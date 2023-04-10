@@ -92,6 +92,7 @@ pub struct PpuState {
     pub vram: [u8; 2048],
     pub palette_table: [u8; 32],
     pub ctrl: PpuControlState,
+    pub scroll: PpuScrollState,
 }
 
 impl PpuState {
@@ -101,6 +102,7 @@ impl PpuState {
             vram: [0; 2048],
             palette_table: [0; 32],
             ctrl: PpuControlState::new(),
+            scroll: PpuScrollState::new(),
         }
     }
 
@@ -120,6 +122,10 @@ impl PpuState {
             ctrl: PpuControlState {
                 bknd_pattern_addr: ppu.ctrl().bknd_pattern_addr(),
             },
+            scroll: PpuScrollState {
+                scroll_x: ppu.scroll().scroll_x,
+                scroll_y: ppu.scroll().scroll_y,
+            },
         }
     }
 }
@@ -133,6 +139,21 @@ impl PpuControlState {
     pub fn new() -> Self {
         Self {
             bknd_pattern_addr: 0,
+        }
+    }
+}
+
+/// PPU Scroll state
+pub struct PpuScrollState {
+    pub scroll_x: u8,
+    pub scroll_y: u8,
+}
+
+impl PpuScrollState {
+    pub fn new() -> Self {
+        Self {
+            scroll_x: 0,
+            scroll_y: 0,
         }
     }
 }
