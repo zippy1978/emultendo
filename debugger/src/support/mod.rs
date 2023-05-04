@@ -1,7 +1,6 @@
 use glium::glutin;
 use glium::glutin::event::{Event, WindowEvent};
 use glium::glutin::event_loop::{ControlFlow, EventLoop};
-use glium::glutin::platform::macos::WindowBuilderExtMacOS;
 use glium::glutin::window::{WindowBuilder};
 use glium::{Display, Surface};
 use imgui::{Context, FontConfig, FontGlyphRanges, FontSource, Ui};
@@ -36,8 +35,6 @@ pub fn init(title: &str, width: f64, height: f64) -> System {
         .with_transparent(true)
         //.with_fullscreen(Some(Fullscreen::Borderless(())))
         //.with_maximized(true)
-        .with_has_shadow(false)
-        .with_fullsize_content_view(true)
         //.with_decorations(false)
         .with_inner_size(glutin::dpi::LogicalSize::new(width, height));
     let display =
