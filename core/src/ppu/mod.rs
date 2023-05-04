@@ -25,6 +25,8 @@ mod scroll_register;
 #[cfg(test)]
 mod scroll_register_tests;
 mod status_register;
+#[cfg(test)]
+mod status_register_tests;
 
 pub mod frame;
 pub mod palette;

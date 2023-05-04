@@ -139,8 +139,8 @@ pub(crate) fn render_background_sync(ppu: &Ppu, frame: &mut Frame) -> bool {
     let mut sprite_zero_hit = false;
 
     // Get scroll position
-    let scroll_x = (ppu.scroll.scroll_x) as usize;
-    let scroll_y = (ppu.scroll.scroll_y) as usize;
+    let scroll_x = (ppu.scroll.scroll_x()) as usize;
+    let scroll_y = (ppu.scroll.scroll_y()) as usize;
 
     // Determine main and second table
     let (main_nametable, second_nametable) = match (&bus.mirroring(), ppu.ctrl.nametable_addr()) {

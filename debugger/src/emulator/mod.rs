@@ -42,7 +42,7 @@ pub fn start_emulator(state: &Arc<RwLock<EmulatorState>>) {
             }
 
             if let Some(cartridge_state) = initial_cartridge_state.as_ref() {
-                // Handle request
+                // Handle reset
                 if state.read().unwrap().reset {
                     nes.insert(Cartridge::from_file(&cartridge_state.filename).unwrap());
                     nes.reset();

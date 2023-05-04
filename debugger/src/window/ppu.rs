@@ -255,6 +255,38 @@ impl Widget for PpuWindow {
             .resizable(true)
             .position(self.start_pos, Condition::FirstUseEver)
             .build(|| {
+
+                let state = state.read().unwrap();
+
+                ui.text("Scroll Register");
+
+                let num_cols = 3;
+
+                let flags = imgui::TableFlags::ROW_BG
+                    | imgui::TableFlags::BORDERS_H
+                    | imgui::TableFlags::BORDERS_V;
+
+                if let Some(_t) =
+                    ui.begin_table_with_sizing("scroll_register", num_cols, flags, [150.0, 10.0], 0.0)
+                {
+                    ui.table_setup_column("X");
+                    ui.table_setup_column("Y");
+                    ui.table_setup_column("Latch");
+
+                    ui.table_headers_row();
+                    ui.table_next_row();
+
+                    ui.table_set_column_index(0);
+                    ui.text(format!("{}", state.ppu.scroll.scroll_x));
+                    ui.table_set_column_index(1);
+                    ui.text(format!("{}", state.ppu.scroll.scroll_y));
+                    ui.table_set_column_index(2);
+                    ui.text(format!("{}", state.ppu.scroll.latch));
+                   
+                }
+
+                ui.separator();
+
                 ui.text("Nametables");
 
                 // Render name tables (4 screens)

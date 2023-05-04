@@ -123,8 +123,9 @@ impl PpuState {
                 bknd_pattern_addr: ppu.ctrl().bknd_pattern_addr(),
             },
             scroll: PpuScrollState {
-                scroll_x: ppu.scroll().scroll_x,
-                scroll_y: ppu.scroll().scroll_y,
+                scroll_x: ppu.scroll().scroll_x(),
+                scroll_y: ppu.scroll().scroll_y(),
+                latch: ppu.scroll().latch(),
             },
         }
     }
@@ -147,6 +148,7 @@ impl PpuControlState {
 pub struct PpuScrollState {
     pub scroll_x: u8,
     pub scroll_y: u8,
+    pub latch: bool,
 }
 
 impl PpuScrollState {
@@ -154,6 +156,7 @@ impl PpuScrollState {
         Self {
             scroll_x: 0,
             scroll_y: 0,
+            latch: true,
         }
     }
 }
