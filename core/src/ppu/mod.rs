@@ -22,6 +22,8 @@ mod control_register_tests;
 
 mod mask_register;
 mod scroll_register;
+#[cfg(test)]
+mod scroll_register_tests;
 mod status_register;
 
 pub mod frame;

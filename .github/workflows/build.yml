@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push: {}
+  pull_request: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Install cargo-tarpaulin
+      run: cargo install cargo-tarpaulin
+      env:
+        RUSTFLAGS: "-C link-dead-code"
+    - name: Build and Test with Coverage
+      run: cargo tarpaulin --all-features --verbose --ciserver github_actions
+      env:
+        CARGO_TERM_VERBOSE: true
