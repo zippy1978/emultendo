@@ -25,14 +25,19 @@ Once launched, a black window appears: just drag and drop a`.nes` catridge file 
 
 ### Controls
 
-<kbd>⬆</kbd> Up
-<kbd>⬇</kbd> Down
-<kbd>⬅</kbd> Left
-<kbd>➡</kbd> Right
-<kbd>A</kbd> A
-<kbd>S</kbd> B
-<kbd>Space</kbd> Select
-<kbd>Return</kbd> Start
+| Keyboard           | Use    |
+|--------------------|--------|
+| <kbd>&#8593;</kbd> | Up     |
+| <kbd>&#8595;</kbd> | Down   |
+| <kbd>&#8592;</kbd> | Left   |
+| <kbd>&#8594;</kbd> | Right  |
+| <kbd>A</kbd>       | A      |
+| <kbd>S</kbd>       | B      |
+| <kbd>Space</kbd>   | Select |
+| <kbd>Return</kbd>  | Start  |
+
+
+
 
 ## Running the debugger
 
@@ -45,6 +50,6 @@ $ cargo run --release
 
 Once launched use the GUI to load a cartridge file.
 
-<center>
-![](screenshots/debugger.gif)
-</center>
+<p align="center">
+  <img width="640" src="screenshots/debugger.gif">
+</p>
