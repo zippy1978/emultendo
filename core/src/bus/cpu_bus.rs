@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{cartridge::Cartridge, controller::Joypad, memory::Memory, ppu::PPU};
+use crate::{cartridge::Cartridge, controller::Joypad, memory::Memory, ppu::Ppu};
 
 //  _______________ $10000  _______________
 // | PRG-ROM       |       |               |
@@ -37,18 +37,18 @@ const PRG_ROM_END: u16 = 0xFFFF;
 
 /// NES CPU connection bus.
 #[derive(Debug, Clone)]
-pub struct CPUBus {
+pub struct CpuBus {
     vram: [u8; 2048],
     prg_rom: Vec<u8>,
-    ppu: Option<Rc<RefCell<PPU>>>,
+    ppu: Option<Rc<RefCell<Ppu>>>,
     joypad1: Option<Rc<RefCell<Joypad>>>,
     joypad2: Option<Rc<RefCell<Joypad>>>,
 }
 
-impl CPUBus {
+impl CpuBus {
     /// Creates a bus.
     pub fn new() -> Self {
-        CPUBus {
+        CpuBus {
             vram: [0; 2048],
             prg_rom: vec![],
             ppu: None,
@@ -68,7 +68,7 @@ impl CPUBus {
     }
 
     /// Connects PPU to the bus.
-    pub fn connect_ppu(&mut self, ppu: &Rc<RefCell<PPU>>) {
+    pub fn connect_ppu(&mut self, ppu: &Rc<RefCell<Ppu>>) {
         self.ppu = Some(Rc::clone(ppu));
     }
 
@@ -101,7 +101,7 @@ impl CPUBus {
     }
 }
 
-impl Memory for CPUBus {
+impl Memory for CpuBus {
     /// Reads memory address.
     fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {

@@ -1,4 +1,4 @@
-use crate::{bus::ppu_bus::PPUBus, cartridge::Mirroring, ppu::PPU};
+use crate::{bus::ppu_bus::PpuBus, cartridge::Mirroring, ppu::Ppu};
 
 use super::{
     frame::Frame,
@@ -8,8 +8,8 @@ use super::{
 };
 
 fn render_name_table_sync(
-    ppu: &PPU,
-    bus: &PPUBus,
+    ppu: &Ppu,
+    bus: &PpuBus,
     frame: &mut Frame,
     name_table: &[u8],
     view_port: Rect,
@@ -51,7 +51,7 @@ fn render_name_table_sync(
     let tile_idx = name_table[tile_addr as usize] as u16;
     let tile =
         &bus.chr_rom()[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
-    let palette = bg_palette(&bus, attribute_table, tile_column, tile_row);
+    let palette = bg_palette(&bus.palette_table(), attribute_table, tile_column, tile_row);
 
     // Determine tile matching pixel
     let tile_x = 7 - (cycles % 8);
@@ -87,7 +87,7 @@ fn render_name_table_sync(
     sprite_zero_hit
 }
 
-fn sprite_zero_hit_at(ppu: &PPU, bus: &PPUBus, test_x: usize, test_y: usize) -> bool {
+fn sprite_zero_hit_at(ppu: &Ppu, bus: &PpuBus, test_x: usize, test_y: usize) -> bool {
     // No hit if sprites are not visible
     let sprites_visible =
         ppu.mask.show_sprites() && (ppu.mask.leftmost_8pxl_sprite() || test_x >= 8);
@@ -130,7 +130,7 @@ fn sprite_zero_hit_at(ppu: &PPU, bus: &PPUBus, test_x: usize, test_y: usize) -> 
     false
 }
 
-pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
+pub(crate) fn render_background_sync(ppu: &Ppu, frame: &mut Frame) -> bool {
     let bus = match &ppu.bus {
         Some(b) => b.borrow_mut(),
         None => panic!("PPU is not connected to bus"),
@@ -139,8 +139,8 @@ pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
     let mut sprite_zero_hit = false;
 
     // Get scroll position
-    let scroll_x = (ppu.scroll.scroll_x) as usize;
-    let scroll_y = (ppu.scroll.scroll_y) as usize;
+    let scroll_x = (ppu.scroll.scroll_x()) as usize;
+    let scroll_y = (ppu.scroll.scroll_y()) as usize;
 
     // Determine main and second table
     let (main_nametable, second_nametable) = match (&bus.mirroring(), ppu.ctrl.nametable_addr()) {
@@ -216,7 +216,7 @@ pub(crate) fn render_background_sync(ppu: &PPU, frame: &mut Frame) -> bool {
     sprite_zero_hit
 }
 
-pub(crate) fn render_sprites(ppu: &PPU, frame: &mut Frame) {
+pub(crate) fn render_sprites(ppu: &Ppu, frame: &mut Frame) {
     let bus = match &ppu.bus {
         Some(b) => b.borrow_mut(),
         None => panic!("PPU is not connected to bus"),
@@ -231,7 +231,7 @@ pub(crate) fn render_sprites(ppu: &PPU, frame: &mut Frame) {
         let flip_vertical = ppu.oam_data[i + 2] >> 7 & 1 == 1;
         let flip_horizontal = ppu.oam_data[i + 2] >> 6 & 1 == 1;
         let pallette_idx = ppu.oam_data[i + 2] & 0b11;
-        let sprite_palette = sprite_palette(&bus, pallette_idx);
+        let sprite_palette = sprite_palette(&bus.palette_table(), pallette_idx);
         let bank: u16 = ppu.ctrl.sprt_pattern_addr();
 
         let tile =

@@ -3,3 +3,4 @@
 tarpaulin-report.html
 .DS_Store
 /games
+*.profraw

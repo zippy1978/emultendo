@@ -1,0 +1,19 @@
+[package]
+name = "emultendo-debugger"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "emultendo-debugger"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+emultendo-core = { path = "../core" }
+imgui = { version = "0.10.0", features = ["tables-api"]}
+imgui-glium-renderer = "0.10.0"
+imgui-winit-support = "0.10.0"
+copypasta = "0.8.2"
+glium = { version = "0.32.1", default-features = true }
+native-dialog = "0.6.3"

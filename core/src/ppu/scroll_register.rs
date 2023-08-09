@@ -1,9 +1,9 @@
 /// PPU scroll register.
 #[derive(Debug, Clone)]
 pub struct ScrollRegister {
-    pub scroll_x: u8,
-    pub scroll_y: u8,
-    pub latch: bool,
+    scroll_x: u8,
+    scroll_y: u8,
+    latch: bool,
 }
 
 impl ScrollRegister {
@@ -13,6 +13,18 @@ impl ScrollRegister {
             scroll_y: 0,
             latch: false,
         }
+    }
+
+    pub fn scroll_x(&self) -> u8 {
+        self.scroll_x
+    }
+
+    pub fn scroll_y(&self) -> u8 {
+        self.scroll_y
+    }
+
+    pub fn latch(&self) -> bool {
+        self.latch
     }
 
     pub fn write(&mut self, data: u8) {

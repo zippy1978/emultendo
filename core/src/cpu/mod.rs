@@ -2,7 +2,7 @@ use bitflags::bitflags;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    bus::cpu_bus::CPUBus,
+    bus::cpu_bus::CpuBus,
     memory::{page_cross, Memory},
 };
 
@@ -44,7 +44,7 @@ bitflags! {
     ///  | +--------------- Overflow Flag
     ///  +----------------- Negative Flag
     ///
-    pub struct CPUFlags: u8 {
+    pub struct CpuFlags: u8 {
         const CARRY             = 0b00000001;
         const ZERO              = 0b00000010;
         const INTERRUPT_DISABLE = 0b00000100;
@@ -61,26 +61,26 @@ const STACK_RESET: u8 = 0xfd;
 
 /// CPU.
 #[derive(Debug, Clone)]
-pub struct CPU {
+pub struct Cpu {
     register_a: u8,
     register_x: u8,
     register_y: u8,
-    status: CPUFlags,
-    pub(crate) program_counter: u16,
+    status: CpuFlags,
+    program_counter: u16,
     stack_pointer: u8,
     memory: [u8; 0xFFFF],
     /// Remaining cycles count before moving to the next instruction.
     remaining_cycles: u8,
-    bus: Option<Rc<RefCell<CPUBus>>>,
+    bus: Option<Rc<RefCell<CpuBus>>>,
 }
 
 /// CPU Error.
 #[derive(Debug)]
-pub enum CPUError {
+pub enum CpuError {
     UnknownOpCode(u8),
 }
 
-impl CPU {
+impl Cpu {
     /// Creates a CPU.
     /// Used internal memory until bus is connected.
     /// Call connect_bus to connect to an external bus.
@@ -90,7 +90,7 @@ impl CPU {
             register_x: 0,
             register_y: 0,
             stack_pointer: STACK_RESET,
-            status: CPUFlags::from_bits_truncate(0b100100),
+            status: CpuFlags::from_bits_truncate(0b100100),
             program_counter: 0,
             memory: [0; 0xFFFF],
             remaining_cycles: 0,
@@ -98,8 +98,36 @@ impl CPU {
         }
     }
 
+    pub fn register_a(&self) -> u8 {
+        self.register_a
+    }
+
+    pub fn register_x(&self) -> u8 {
+        self.register_x
+    }
+
+    pub fn register_y(&self) -> u8 {
+        self.register_y
+    }
+
+    pub fn status(&self) -> CpuFlags {
+        self.status
+    }
+
+    pub fn program_counter(&self) -> u16 {
+        self.program_counter
+    }
+
+    pub fn stack_pointer(&self) -> u8 {
+        self.stack_pointer
+    }
+
+    pub fn set_program_counter(&mut self, addr: u16) {
+        self.program_counter = addr;
+    }
+
     /// Connects CPU to bus.
-    pub fn connect_bus(&mut self, bus: &Rc<RefCell<CPUBus>>) {
+    pub fn connect_bus(&mut self, bus: &Rc<RefCell<CpuBus>>) {
         self.bus = Some(Rc::clone(bus));
     }
 
@@ -169,15 +197,15 @@ impl CPU {
     /// Updates zero and neg flags in status.
     fn update_zero_and_negative_flags(&mut self, result: u8) {
         if result == 0 {
-            self.status.insert(CPUFlags::ZERO);
+            self.status.insert(CpuFlags::ZERO);
         } else {
-            self.status.remove(CPUFlags::ZERO);
+            self.status.remove(CpuFlags::ZERO);
         }
 
         if result & 0b1000_0000 != 0 {
-            self.status.insert(CPUFlags::NEGATIV);
+            self.status.insert(CpuFlags::NEGATIV);
         } else {
-            self.status.remove(CPUFlags::NEGATIV);
+            self.status.remove(CpuFlags::NEGATIV);
         }
     }
 
@@ -186,9 +214,9 @@ impl CPU {
         let (addr, page_cross) = self.get_operand_address(mode);
         let data = self.mem_read(addr);
         if data <= compare_with {
-            self.status.insert(CPUFlags::CARRY);
+            self.status.insert(CpuFlags::CARRY);
         } else {
-            self.status.remove(CPUFlags::CARRY);
+            self.status.remove(CpuFlags::CARRY);
         }
 
         self.update_zero_and_negative_flags(compare_with.wrapping_sub(data));
@@ -226,7 +254,7 @@ impl CPU {
     fn add_to_register_a(&mut self, data: u8) {
         let sum = self.register_a as u16
             + data as u16
-            + (if self.status.contains(CPUFlags::CARRY) {
+            + (if self.status.contains(CpuFlags::CARRY) {
                 1
             } else {
                 0
@@ -235,17 +263,17 @@ impl CPU {
         let carry = sum > 0xff;
 
         if carry {
-            self.status.insert(CPUFlags::CARRY);
+            self.status.insert(CpuFlags::CARRY);
         } else {
-            self.status.remove(CPUFlags::CARRY);
+            self.status.remove(CpuFlags::CARRY);
         }
 
         let result = sum as u8;
 
         if (data ^ result) & (result ^ self.register_a) & 0x80 != 0 {
-            self.status.insert(CPUFlags::OVERFLOW);
+            self.status.insert(CpuFlags::OVERFLOW);
         } else {
-            self.status.remove(CPUFlags::OVERFLOW)
+            self.status.remove(CpuFlags::OVERFLOW)
         }
 
         self.register_a = result;
@@ -281,7 +309,7 @@ impl CPU {
     }
 
     /// Loads and runs program.
-    pub fn load_and_run(&mut self, program: Vec<u8>) -> Result<(), CPUError> {
+    pub fn load_and_run(&mut self, program: Vec<u8>) -> Result<(), CpuError> {
         self.load(program);
         self.reset();
         self.run()
@@ -299,7 +327,7 @@ impl CPU {
         self.register_x = 0;
         self.register_y = 0;
         self.stack_pointer = STACK_RESET;
-        self.status = CPUFlags::from_bits_truncate(0b100100);
+        self.status = CpuFlags::from_bits_truncate(0b100100);
 
         self.program_counter = self.mem_read_u16(0xFFFC);
         self.remaining_cycles = 0;
@@ -308,11 +336,11 @@ impl CPU {
     fn interrupt(&mut self, interrupt: interrupt::Interrupt) {
         self.stack_push_u16(self.program_counter);
         let mut flag = self.status.clone();
-        flag.set(CPUFlags::BREAK, interrupt.b_flag_mask & 0b010000 == 1);
-        flag.set(CPUFlags::BREAK2, interrupt.b_flag_mask & 0b100000 == 1);
+        flag.set(CpuFlags::BREAK, interrupt.b_flag_mask & 0b010000 == 1);
+        flag.set(CpuFlags::BREAK2, interrupt.b_flag_mask & 0b100000 == 1);
 
         self.stack_push(flag.bits);
-        self.status.insert(CPUFlags::INTERRUPT_DISABLE);
+        self.status.insert(CpuFlags::INTERRUPT_DISABLE);
 
         self.remaining_cycles += interrupt.cpu_cycles;
 
@@ -321,7 +349,7 @@ impl CPU {
 
     /// Processes next cycle.
     /// Returns false if BRK is called.
-    pub fn tick(&mut self) -> Result<bool, CPUError> {
+    pub fn tick(&mut self) -> Result<bool, CpuError> {
         if self.remaining_cycles > 0 {
             self.remaining_cycles -= 1;
         } else {
@@ -337,7 +365,7 @@ impl CPU {
 
             let opcode = match opcodes.get(&code) {
                 Some(c) => c,
-                None => return Err(CPUError::UnknownOpCode(code)),
+                None => return Err(CpuError::UnknownOpCode(code)),
             };
 
             //println!("{:#06x} - {}", self.program_counter, opcode.mnemonic);
@@ -648,9 +676,9 @@ impl CPU {
     }
 
     /// Runs loaded program.
-    pub fn run_with_callback<F>(&mut self, mut callback: F) -> Result<(), CPUError>
+    pub fn run_with_callback<F>(&mut self, mut callback: F) -> Result<(), CpuError>
     where
-        F: FnMut(&mut CPU),
+        F: FnMut(&mut Cpu),
     {
         let mut cont = true;
         while cont {
@@ -664,7 +692,7 @@ impl CPU {
         Ok(())
     }
 
-    pub fn run(&mut self) -> Result<(), CPUError> {
+    pub fn run(&mut self) -> Result<(), CpuError> {
         self.run_with_callback(|_| {})
     }
 

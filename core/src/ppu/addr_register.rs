@@ -13,7 +13,7 @@ pub struct AddrRegister {
         }
     }
     
-    fn set(&mut self, data: u16) {
+    pub(crate) fn set(&mut self, data: u16) {
         self.value.0 = (data >> 8) as u8;
         self.value.1 = (data & 0xff) as u8;
     }

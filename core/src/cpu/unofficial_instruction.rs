@@ -2,7 +2,7 @@ use crate::memory::Memory;
 
 use super::{
     instruction::{AddressingMode, Instructions},
-    CPUFlags, CPU,
+    CpuFlags, Cpu,
 };
 
 /// NES CPU unofficial instructions.
@@ -31,7 +31,7 @@ pub(crate) trait UnofficialInstructions {
     fn shy(&mut self);
 }
 
-impl UnofficialInstructions for CPU {
+impl UnofficialInstructions for Cpu {
     fn lax(&mut self, mode: &AddressingMode) {
         let (addr, _) = self.get_operand_address(mode);
         let data = self.mem_read(addr);
@@ -58,7 +58,7 @@ impl UnofficialInstructions for CPU {
         data = data.wrapping_sub(1);
         self.mem_write(addr, data);
         if data <= self.register_a {
-            self.status.insert(CPUFlags::CARRY);
+            self.status.insert(CpuFlags::CARRY);
         }
 
         self.update_zero_and_negative_flags(self.register_a.wrapping_sub(data));
@@ -99,7 +99,7 @@ impl UnofficialInstructions for CPU {
         let result = x_and_a.wrapping_sub(data);
 
         if data <= x_and_a {
-            self.status.insert(CPUFlags::CARRY);
+            self.status.insert(CpuFlags::CARRY);
         }
         self.update_zero_and_negative_flags(result);
 
@@ -117,15 +117,15 @@ impl UnofficialInstructions for CPU {
         let bit_6 = (result >> 6) & 1;
 
         if bit_6 == 1 {
-            self.status.insert(CPUFlags::CARRY)
+            self.status.insert(CpuFlags::CARRY)
         } else {
-            self.status.remove(CPUFlags::CARRY)
+            self.status.remove(CpuFlags::CARRY)
         }
 
         if bit_5 ^ bit_6 == 1 {
-            self.status.insert(CPUFlags::OVERFLOW);
+            self.status.insert(CpuFlags::OVERFLOW);
         } else {
-            self.status.remove(CPUFlags::OVERFLOW);
+            self.status.remove(CpuFlags::OVERFLOW);
         }
 
         self.update_zero_and_negative_flags(result);
@@ -136,10 +136,10 @@ impl UnofficialInstructions for CPU {
         let data = self.mem_read(addr);
         self.register_a = data & self.register_a;
         self.update_zero_and_negative_flags(self.register_a);
-        if self.status.contains(CPUFlags::NEGATIV) {
-            self.status.insert(CPUFlags::CARRY);
+        if self.status.contains(CpuFlags::NEGATIV) {
+            self.status.insert(CpuFlags::CARRY);
         } else {
-            self.status.remove(CPUFlags::CARRY);
+            self.status.remove(CpuFlags::CARRY);
         }
     }
 

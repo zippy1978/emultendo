@@ -1,11 +1,17 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    time::{Duration, SystemTimeError},
+};
+
+use spin_sleep::LoopHelper;
 
 use crate::{
-    bus::{cpu_bus::CPUBus, ppu_bus::PPUBus},
+    bus::{cpu_bus::CpuBus, ppu_bus::PpuBus},
     cartridge::Cartridge,
     controller::Joypad,
-    cpu::{CPUError, CPU},
-    ppu::{frame::Frame, PPUError, PPU},
+    cpu::{Cpu, CpuError},
+    ppu::{frame::Frame, Ppu, PpuError},
 };
 
 pub mod tools;
@@ -13,42 +19,54 @@ pub mod tools;
 #[cfg(test)]
 mod mod_tests;
 
+// Source: https://www.nesdev.org/wiki/Cycle_reference_chart
+pub const CPU_MHZ: f32 = 1.789773;
+
 /// NES Error.
 #[derive(Debug)]
-pub enum NESError {
-    CPU(CPUError),
-    PPU(PPUError),
+pub enum NesError {
+    Cpu(CpuError),
+    Ppu(PpuError),
+    Clock(String),
 }
 
-impl From<CPUError> for NESError {
-    fn from(value: CPUError) -> Self {
-        Self::CPU(value)
+impl From<CpuError> for NesError {
+    fn from(value: CpuError) -> Self {
+        Self::Cpu(value)
     }
 }
 
-impl From<PPUError> for NESError {
-    fn from(value: PPUError) -> Self {
-        Self::PPU(value)
+impl From<PpuError> for NesError {
+    fn from(value: PpuError) -> Self {
+        Self::Ppu(value)
+    }
+}
+
+impl From<SystemTimeError> for NesError {
+    fn from(value: SystemTimeError) -> Self {
+        Self::Clock(value.to_string())
     }
 }
 
 /// NES console.
-pub struct NES {
-    cpu: CPU,
-    cpu_bus: Rc<RefCell<CPUBus>>,
-    ppu: Rc<RefCell<PPU>>,
-    ppu_bus: Rc<RefCell<PPUBus>>,
+pub struct Nes {
+    cpu: Cpu,
+    cpu_bus: Rc<RefCell<CpuBus>>,
+    cpu_mhz: f32,
+    ppu: Rc<RefCell<Ppu>>,
+    ppu_bus: Rc<RefCell<PpuBus>>,
     joypad1: Option<Rc<RefCell<Joypad>>>,
     joypad2: Option<Rc<RefCell<Joypad>>>,
 }
 
-impl NES {
+impl Nes {
     pub fn new(joypad1: Option<Joypad>, joypad2: Option<Joypad>) -> Self {
         let mut this = Self {
-            cpu: CPU::new(),
-            cpu_bus: Rc::new(RefCell::new(CPUBus::new())),
-            ppu: Rc::new(RefCell::new(PPU::new())),
-            ppu_bus: Rc::new(RefCell::new(PPUBus::new())),
+            cpu: Cpu::new(),
+            cpu_bus: Rc::new(RefCell::new(CpuBus::new())),
+            cpu_mhz: CPU_MHZ,
+            ppu: Rc::new(RefCell::new(Ppu::new())),
+            ppu_bus: Rc::new(RefCell::new(PpuBus::new())),
             joypad1: match joypad1 {
                 Some(j) => Some(Rc::new(RefCell::new(j))),
                 None => None,
@@ -76,6 +94,14 @@ impl NES {
         this
     }
 
+    pub fn set_cpu_mhz(&mut self, mhz: f32) {
+        self.cpu_mhz = mhz;
+    }
+
+    pub fn cpu_mhz(&self) -> f32 {
+        self.cpu_mhz
+    }
+
     pub fn insert(&mut self, cartridge: Cartridge) {
         self.cpu_bus.borrow_mut().connect_cartridge(&cartridge);
         self.ppu_bus.borrow_mut().connect_cartridge(&cartridge);
@@ -87,30 +113,37 @@ impl NES {
 
     #[cfg(test)]
     pub fn start_at(&mut self, addr: u16) {
-        self.cpu.program_counter = addr;
+        self.cpu.set_program_counter(addr);
     }
 
     pub fn run<F1, F2>(
         &mut self,
         mut cpu_callback: F1,
         mut ppu_callback: F2,
-    ) -> Result<(), NESError>
+    ) -> Result<(), NesError>
     where
-        F1: FnMut(&mut CPU),
-        F2: FnMut(&Frame, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,
+        F1: FnMut(&mut Cpu) -> bool,
+        F2: FnMut(&Ppu, Option<&Rc<RefCell<Joypad>>>, Option<&Rc<RefCell<Joypad>>>) -> bool,
     {
         let mut cont = true;
 
+        let mut loop_helper = LoopHelper::builder().build_without_target_rate();
+
         while cont {
             if self.ppu_bus.borrow_mut().cartridge_connected() {
+                let delta = loop_helper.loop_start();
+
+                let cycle_duration =
+                    Duration::from_nanos(1_000_000_000 / (self.cpu_mhz * 1_000_000.0) as u64);
+
                 let nmi_before = self.ppu.borrow_mut().nmi_interrupt();
 
                 // CPU callback is called only on instruction change
                 // Not for every cycle
                 if self.cpu.instruction_changed() {
-                    cpu_callback(&mut self.cpu);
+                    cont = cont && cpu_callback(&mut self.cpu);
                 }
-                cont = self.cpu.tick()?;
+                cont = cont && self.cpu.tick()?;
 
                 // PPU runs 3x faster than CPU
                 for _ in 0..3 {
@@ -120,21 +153,28 @@ impl NES {
                 let nmi_after = self.ppu.borrow_mut().nmi_interrupt();
 
                 if !nmi_before && nmi_after {
-                    cont = ppu_callback(
-                        &self.ppu.borrow_mut().frame().borrow(),
-                        match &mut self.joypad1 {
-                            Some(j) => Some(j),
-                            None => None,
-                        },
-                        match &mut self.joypad2 {
-                            Some(j) => Some(j),
-                            None => None,
-                        },
-                    );
+                    cont = cont
+                        && ppu_callback(
+                            &self.ppu.borrow(),
+                            match &mut self.joypad1 {
+                                Some(j) => Some(j),
+                                None => None,
+                            },
+                            match &mut self.joypad2 {
+                                Some(j) => Some(j),
+                                None => None,
+                            },
+                        );
+                }
+
+                // Wait for cycle duration end
+                // DO NOT use a thread::sleep : not accurate enough !
+                if let Some(wait) = cycle_duration.checked_sub(delta) {
+                    spin_sleep::sleep(wait);
                 }
             } else {
                 cont = ppu_callback(
-                    &self.ppu.borrow_mut().frame().borrow(),
+                    &self.ppu.borrow(),
                     match &mut self.joypad1 {
                         Some(j) => Some(j),
                         None => None,
